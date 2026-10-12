@@ -12,8 +12,9 @@ No server, VPN or account is involved: connections go straight out of the adapte
 
 ## Uses and Tested on
 - Steam downloads
-- Large file downloads via IDM
+- Torrent Downloads
 - Large file uploads to Google Drive
+- Large file downloads using IDM (If server supports multiple connections)
 
 ## Install
 
