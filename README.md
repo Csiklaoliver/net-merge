@@ -10,6 +10,11 @@ Measured with Wi-Fi + an Android USB tether + an iPhone hotspot, 9 parallel down
 
 No server, VPN or account is involved: connections go straight out of the adapter they are assigned to.
 
+## Uses and Tested on
+- Steam downloads
+- Large file downloads via IDM
+- Large file uploads to Google Drive
+
 ## Install
 
 Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) and run it (needs admin).
