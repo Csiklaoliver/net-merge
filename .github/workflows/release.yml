@@ -1,5 +1,6 @@
 name: release
 # Push a tag like v0.2.0 to build the installer and portable zip and publish a GitHub release.
+# The release notes are that version's section of CHANGELOG.md; the run fails early if it's missing.
 on:
   push:
     tags: ['v*']
@@ -12,6 +13,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Release notes from CHANGELOG.md
+        shell: pwsh
+        run: scripts/release-notes.ps1 -Version ('${{ github.ref_name }}'.TrimStart('v')) -Out release-notes.md
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -28,7 +32,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = '${{ github.ref_name }}'
+          $title = 'net-merge ' + $tag.TrimStart('v')
           $files = Get-ChildItem dist/net-merge-setup-*.exe, dist/net-merge-*-portable.zip
           gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) { gh release upload $tag $files --clobber }   # release already created by hand
-          else { gh release create $tag $files --generate-notes }
+          if ($LASTEXITCODE -eq 0) {   # release already created by hand: refresh files and notes
+            gh release upload $tag $files --clobber
+            gh release edit $tag --title $title --notes-file release-notes.md
+          } else {
+            gh release create $tag $files --title $title --notes-file release-notes.md
+          }

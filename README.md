@@ -42,7 +42,7 @@ No server, VPN or account is involved: connections go straight out of the adapte
 
 Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) and run it (needs admin).
 It is not code-signed yet, so SmartScreen will warn: *More info > Run anyway*. A portable zip is also
-published.
+published. What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 ## How to use
 
@@ -137,6 +137,8 @@ scripts\fetch-wintun.ps1 -OutDir .
 ```
 
 Releases are built by GitHub Actions when a `vX.Y.Z` tag is pushed (`.github/workflows/release.yml`).
+Add the version's section to `CHANGELOG.md` first: it becomes the release notes, and the release fails
+without it (`scripts\release-notes.ps1 -Version X.Y.Z` previews them).
 `go test -run xxx -bench Relay ./...` measures the relay data path (about 3 GB/s over loopback).
 
 Don't benchmark against speed.cloudflare.com repeatedly: it rate-limits the IP (HTTP 429) after a few
