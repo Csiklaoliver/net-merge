@@ -66,13 +66,26 @@ func (p tunProxy) DialUDP(m *M.Metadata) (net.PacketConn, error) {
 type Tun struct {
 	mu  sync.Mutex
 	b   *Balancer
+	mtu int // set before On; see defaultMTU
 	dev device.Device
 	stk *stack.Stack
 	idx int
 	on  bool
 }
 
-func NewTun(b *Balancer) *Tun { return &Tun{b: b} }
+// defaultMTU is the TUN's MTU, used both by the userland stack and by Windows. TUN traffic never
+// leaves the machine (flows are re-dialed with normal sockets), so it isn't bound by the links'
+// 1500. Bigger packets mean far fewer per-packet trips through the userland stack: about 6x fewer
+// for bulk TCP at 9000. Not 65535: the TUN library allocates a full-MTU buffer for every inbound
+// packet, even a 40-byte ACK.
+const defaultMTU = 9000
+
+// udpSessionTimeout ends idle UDP sessions sooner than tun2socks' 60s. Torrent DHT opens a session
+// per peer queried, each holding a socket, two goroutines and two 64 KB buffers. 30s stays above the
+// ~25s keepalives common in VPN and NAT-traversal protocols.
+const udpSessionTimeout = 30 * time.Second
+
+func NewTun(b *Balancer) *Tun { return &Tun{b: b, mtu: defaultMTU} }
 
 func (t *Tun) IsOn() bool {
 	t.mu.Lock()
@@ -86,12 +99,15 @@ func (t *Tun) On() (err error) {
 	if t.on {
 		return nil
 	}
-	if lvl, e := tlog.ParseLevel("warn"); e == nil {
+	// "error", not "warn": tun2socks warns once per dropped UDP packet ("symmetric NAT ... drop
+	// packet"), which a torrent client triggers continuously.
+	if lvl, e := tlog.ParseLevel("error"); e == nil {
 		tlog.SetLogger(tlog.Must(tlog.NewLeveled(lvl)))
 	}
+	tunnel.T().SetUDPTimeout(udpSessionTimeout)
 	cleanupStale()
 
-	dev, err := tun.Open(tunName, 1500)
+	dev, err := tun.Open(tunName, uint32(t.mtu))
 	if err != nil {
 		return fmt.Errorf("open TUN (needs admin and wintun.dll next to net-merge.exe): %w", err)
 	}
@@ -122,6 +138,13 @@ func (t *Tun) On() (err error) {
 		return err
 	}
 	t.idx = ifc.Index
+	// Windows gives Wintun adapters an MTU of 65535. Match the stack's MTU, so Windows sizes TCP
+	// segments to it and fragments bigger UDP datagrams instead of sending packets the stack drops.
+	idx := strconv.Itoa(t.idx)
+	mtu := "mtu=" + strconv.Itoa(t.mtu)
+	if e := run("netsh", "interface", "ipv4", "set", "subinterface", "interface="+idx, mtu, "store=active"); e != nil {
+		logf("warning: could not set IPv4 MTU: %v\n", e)
+	}
 	// Two /1 routes beat any default route (/0) without touching it, so Off() is just deleting these.
 	for _, dst := range [][2]string{{"0.0.0.0", "128.0.0.0"}, {"128.0.0.0", "128.0.0.0"}} {
 		if err = run("route", "add", dst[0], "mask", dst[1], "0.0.0.0", "metric", "1", "if", strconv.Itoa(t.idx)); err != nil {
@@ -129,10 +152,12 @@ func (t *Tun) On() (err error) {
 		}
 	}
 	// IPv6 is best-effort: if it can't be set up, IPv4 still works and IPv6 stays on its normal path.
-	idx := strconv.Itoa(t.idx)
 	if e := run("netsh", "interface", "ipv6", "add", "address", "interface="+idx, "address="+tunIP6+"/64", "store=active"); e != nil {
 		logf("warning: IPv6 not captured: %v\n", e)
 	} else {
+		if e := run("netsh", "interface", "ipv6", "set", "subinterface", "interface="+idx, mtu, "store=active"); e != nil {
+			logf("warning: could not set IPv6 MTU: %v\n", e)
+		}
 		for _, p := range []string{"::/1", "8000::/1"} {
 			if e := run("netsh", "interface", "ipv6", "add", "route", "prefix="+p, "interface="+idx, "metric=1", "store=active"); e != nil {
 				logf("warning: IPv6 route %s: %v\n", p, e)

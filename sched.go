@@ -56,6 +56,11 @@ type Slot struct {
 	lastIn, lastOut [2]int64
 	rateIn, rateOut [2]float64 // bytes/s over the last tick
 	peak            [2]float64 // observed capacity: max recent rateIn+rateOut
+
+	// The adapter's total traffic from Windows' counters (all apps, not only net-merge's flows).
+	linkIn, linkOut         uint64
+	linkRateIn, linkRateOut float64
+	linkPrimed              bool
 }
 
 func (sl *Slot) ip(f family) net.IP {
@@ -77,7 +82,8 @@ type SlotStats struct {
 	Active, Total     int64
 	Failed            int64
 	BytesIn, BytesOut int64
-	RateIn, RateOut   float64 // both families summed
+	RateIn, RateOut   float64 // through net-merge, both families summed (bytes/s)
+	LinkIn, LinkOut   float64 // through the adapter by any app, from Windows' counters (bytes/s)
 	Peak, Peak6       float64
 }
 
@@ -175,6 +181,18 @@ func (s *Scheduler) Tick(dt time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sec := dt.Seconds()
+	for _, sl := range s.slots {
+		in, out, ok := ifOctets(sl.Index)
+		if !sl.present || !ok {
+			sl.linkRateIn, sl.linkRateOut, sl.linkPrimed = 0, 0, false
+			continue
+		}
+		if sl.linkPrimed && in >= sl.linkIn && out >= sl.linkOut { // counters can reset when an adapter reconnects
+			sl.linkRateIn = float64(in-sl.linkIn) / sec
+			sl.linkRateOut = float64(out-sl.linkOut) / sec
+		}
+		sl.linkIn, sl.linkOut, sl.linkPrimed = in, out, true
+	}
 	for _, f := range []family{fam4, fam6} {
 		var maxPeak float64
 		live, measured := 0, true
@@ -353,6 +371,7 @@ func (s *Scheduler) Snapshot() []SlotStats {
 			BytesIn:  sl.bytesIn[fam4].Load() + sl.bytesIn[fam6].Load(),
 			BytesOut: sl.bytesOut[fam4].Load() + sl.bytesOut[fam6].Load(),
 			RateIn:   sl.rateIn[fam4] + sl.rateIn[fam6], RateOut: sl.rateOut[fam4] + sl.rateOut[fam6],
+			LinkIn: sl.linkRateIn, LinkOut: sl.linkRateOut,
 			Peak: sl.peak[fam4], Peak6: sl.peak[fam6],
 		}
 		if a.ip4 != nil {

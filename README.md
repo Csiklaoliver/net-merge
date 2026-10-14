@@ -10,6 +10,28 @@ Measured with Wi-Fi + an Android USB tether + an iPhone hotspot, 9 parallel down
 
 No server, VPN or account is involved: connections go straight out of the adapter they are assigned to.
 
+## Screenshots
+
+| Hover the tray icon | Right-click the tray icon |
+|---|---|
+| ![Tooltip: Merging, speed of each adapter and the total](docs/tray-tooltip.png) | ![Menu: total, each adapter's speed and flows, IPv6 option, Pause merging, Quit](docs/tray-menu.png) |
+
+## Features
+
+- **Combines any adapters**: Wi-Fi, Ethernet, USB tethering, phone hotspots. Plug one in and it is used
+  within seconds; unplug it and its connections move to the others. VPN and virtual adapters (Tailscale,
+  WireGuard, Hyper-V, WSL) are ignored.
+- **System-wide**: every app, TCP and UDP, IPv4 and IPv6. No proxy settings, nothing to configure per app.
+- **Balances by real speed**: each link gets new connections in proportion to its measured throughput,
+  tracked separately for IPv4 and IPv6. A link with no internet (tether without data, captive-portal
+  Wi-Fi) gets nothing until it recovers.
+- **Live speeds on hover**: each adapter's download/upload and the total. These are the adapters' real
+  traffic from Windows, so apps that bypass net-merge (qBittorrent binds to adapters itself) still count.
+- **One click on and off**, and optional start at sign-in without a UAC prompt.
+- **Safe to crash**: the virtual adapter and its routes disappear with the process, so a crash or a kill
+  never leaves the PC without internet.
+- **Light on CPU**: about 0.18 cores per 100 Mbit/s.
+
 ## Uses and Tested on
 - Steam downloads
 - Torrent Downloads
@@ -22,26 +44,48 @@ Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) an
 It is not code-signed yet, so SmartScreen will warn: *More info > Run anyway*. A portable zip is also
 published.
 
-Then start **net-merge** from the Start menu. A tray icon appears:
+## How to use
 
-- **left-click** toggles ON / OFF
-- **right-click** shows live speed per adapter, "Turn on/off", and Quit
+1. Start **net-merge** from the Start menu and approve the admin prompt. A tray icon appears (if you
+   don't see it, it is behind the `^` arrow next to the clock; drag it onto the taskbar).
+2. Connect more links: plug in your phone with USB tethering on, join a second Wi-Fi, plug in Ethernet.
+   They are picked up automatically.
+3. Use the tray icon:
+   - **green** = merging, **grey** = paused
+   - **left-click** pauses or starts merging
+   - **hover** shows each adapter's speed and the total
+   - **right-click** shows the same with full adapter names, how many connections net-merge has put
+     on each adapter, the IPv6 option, *Pause merging* / *Start merging*, and *Quit*
+4. To start it at sign-in, tick *Start net-merge when I sign in* in the installer, or run
+   `net-merge autostart on`.
 
-Tick *Start net-merge when I sign in* in the installer (or run `net-merge autostart on`) to start it at
-sign-in without a UAC prompt.
+Tips:
+- It helps most when an app opens many connections at once: Steam, browsers, cloud uploads, download
+  managers that split files (IDM). One single connection always stays on one adapter.
+- Torrent clients already use every adapter on their own. Leave qBittorrent's network interface on
+  *Any interface*; its speed still shows in the tray.
+- *Use all adapters (IPv6 only if every adapter has it)*: leave it ticked. If only some links have IPv6,
+  apps that prefer IPv6 would otherwise pile onto those links. Untick it only if you need an IPv6-only site.
+- `net-merge list` shows which adapters are used and why others are skipped; `net-merge status` shows
+  live per-adapter numbers.
 
 ## Command line
 
 ```
-net-merge on | off | quit | status | list | autostart on|off|status | version
+net-merge on | off        start / pause merging in the running tray
+net-merge quit            pause and exit the tray
+net-merge status | list   live numbers / which adapters are used and why
+net-merge autostart on|off|status
 net-merge tray            tray app (asks for admin once)
 net-merge run             system-wide in a console window
 net-merge socks           plain SOCKS5 proxy on 127.0.0.1:1080 (no admin, per-app)
 net-merge cleanup         remove leftover routes after a crash
+net-merge version
 ```
 
 Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters), `-weight "Name=3"`
-(fixed weight instead of measured), `-ipv6 auto|on|off`, `-log file`.
+(fixed weight instead of measured), `-ipv6 auto|on|off`, `-mtu 9000` (virtual adapter MTU, see below),
+`-pprof 127.0.0.1:6060` (Go profiler, loopback only), `-log file`.
 
 ## How it works
 
@@ -51,6 +95,9 @@ Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters)
 - Flows entering the TUN are terminated in a userland TCP/IP stack (tun2socks/gVisor) and re-dialed from
   a chosen adapter: the socket is bound to that adapter's source IP and forced out of it with
   `IP_UNICAST_IF`, so it can never loop back into the TUN.
+- The virtual adapter runs at MTU 9000 (both Windows and the userland stack). Its traffic never leaves
+  the machine, so the links' 1500 doesn't apply, and bigger packets cost far less CPU: measured about
+  3x less CPU per Mbit/s than at 1500 (0.18 vs 0.54 cores per 100 Mbit/s). `-mtu` changes it.
 - Adapters are detected automatically and re-scanned every 3 s. Only real hardware with a default gateway
   is used: tunnels, VPNs (Tailscale, WireGuard, ...), virtual switches and LAN-only adapters are skipped
   (`net-merge list` shows why).

@@ -57,6 +57,8 @@ type common struct {
 	logFile  string
 	stateDir string
 	ipv6     string
+	mtu      int
+	pprof    string
 }
 
 func (c *common) register(fs *flag.FlagSet) {
@@ -67,6 +69,8 @@ func (c *common) register(fs *flag.FlagSet) {
 	fs.DurationVar(&c.stats, "stats", 5*time.Second, "stats print interval (0 = off)")
 	fs.BoolVar(&c.auto, "auto-weight", true, "weight adapters by measured throughput (off when -weight is given)")
 	fs.StringVar(&c.ipv6, "ipv6", "auto", "auto: IPv6 only if every adapter has it (else apps use IPv4 on all adapters); on: always; off: never")
+	fs.IntVar(&c.mtu, "mtu", defaultMTU, "MTU of the virtual adapter (1280-65535); larger means fewer packets and less CPU")
+	fs.StringVar(&c.pprof, "pprof", "", "serve Go's profiler on this loopback address, e.g. 127.0.0.1:6060")
 	fs.StringVar(&c.logFile, "log", "", "write output to this file instead of the console")
 	fs.StringVar(&c.stateDir, "state-dir", defaultStateDir(), "where status/off marker files live")
 }
@@ -105,6 +109,14 @@ func (c *common) setup() error {
 // boot discovers adapters and starts the background loops: re-scan, 1s throughput sampling
 // (which also drives auto-weights and the status file), and periodic stats printing.
 func (c *common) boot(mode func() string) (*Scheduler, *Balancer, error) {
+	if c.mtu < 1280 || c.mtu > 65535 {
+		return nil, nil, fmt.Errorf("-mtu must be between 1280 and 65535, got %d", c.mtu)
+	}
+	if c.pprof != "" {
+		if err := startPprof(c.pprof); err != nil {
+			return nil, nil, err
+		}
+	}
 	nics, err := c.nics()
 	if err != nil {
 		return nil, nil, err
@@ -177,8 +189,10 @@ func formatNICs(snap []SlotStats) string {
 		if !s.Present {
 			gone = " (gone)"
 		}
-		fmt.Fprintf(&sb, "%-14s v4 %-11s v6 %-11s now %6.1f Mbit/s  active %3d  total %5d  w %.2f/%.2f  peak %5.0f/%5.0f Mbit/s  down %8.1f MB  up %7.1f MB  failed %d%s\n",
-			s.Name, s.State, s.State6, (s.RateIn+s.RateOut)*8/1e6, s.Active, s.Total, s.Weight, s.Weight6, s.Peak*8/1e6, s.Peak6*8/1e6, float64(s.BytesIn)/1e6, float64(s.BytesOut)/1e6, s.Failed, gone)
+		// "link" is the adapter's total traffic by any app (Windows' counters); "via net-merge" is the
+		// part net-merge relayed. Apps that bind to adapters directly (qBittorrent) only show in "link".
+		fmt.Fprintf(&sb, "%-14s v4 %-11s v6 %-11s link down %6.1f up %5.1f Mbit/s  via net-merge %6.1f  active %3d  total %5d  w %.2f/%.2f  failed %d%s\n",
+			s.Name, s.State, s.State6, s.LinkIn*8/1e6, s.LinkOut*8/1e6, (s.RateIn+s.RateOut)*8/1e6, s.Active, s.Total, s.Weight, s.Weight6, s.Failed, gone)
 	}
 	return sb.String()
 }
@@ -320,6 +334,7 @@ func cmdRun(args []string) {
 		os.Exit(1)
 	}
 	tun := NewTun(bal)
+	tun.mtu = c.mtu
 	if err := tun.On(); err != nil {
 		logf("error: %v\n", err)
 		os.Exit(1)
