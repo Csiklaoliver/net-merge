@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,7 @@ func instanceRunning() bool {
 // logger) at f, for the hidden elevated process that has no console.
 func redirectStd(f *os.File) {
 	os.Stdout, os.Stderr = f, f
+	log.SetOutput(f) // the std logger captured the old stderr at init; the tray library logs through it
 	windows.SetStdHandle(windows.STD_OUTPUT_HANDLE, windows.Handle(f.Fd()))
 	windows.SetStdHandle(windows.STD_ERROR_HANDLE, windows.Handle(f.Fd()))
 }

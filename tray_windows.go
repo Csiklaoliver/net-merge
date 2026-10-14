@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unsafe"
 
 	"fyne.io/systray"
+	"golang.org/x/sys/windows"
 )
 
 const trayRows = 4 // adapters shown in the menu; extra rows stay hidden
@@ -60,9 +62,45 @@ func cmdTray(args []string) {
 	}
 	tun.b = bal
 
+	// Started at sign-in this process can beat explorer.exe by a fraction of a second. With no
+	// taskbar the tray library fails to create the icon and never becomes ready, so wait for it.
+	if !waitForTaskbar(3 * time.Minute) {
+		logf("warning: taskbar not found after 3 minutes, trying anyway\n")
+	}
+	ready := make(chan struct{})
+	go func() { // safety net: if the icon still can't be created, exit so the scheduled task retries
+		select {
+		case <-ready:
+		case <-time.After(30 * time.Second):
+			logf("error: tray icon did not initialise within 30s; exiting so the scheduled task can restart it\n")
+			os.Exit(4)
+		}
+	}()
+
 	ui := &trayUI{tun: tun, sched: sched, bal: bal, stateDir: c.stateDir, startOn: !*startOff,
-		iconOn: trayIcon(true), iconOff: trayIcon(false), toggleReq: make(chan struct{}, 1)}
+		iconOn: trayIcon(true), iconOff: trayIcon(false), toggleReq: make(chan struct{}, 1), ready: ready}
 	systray.Run(ui.onReady, func() { tun.Off(); clearStatus(c.stateDir) })
+}
+
+// waitForTaskbar blocks until the shell's taskbar and notification area exist.
+func waitForTaskbar(max time.Duration) bool {
+	user32 := windows.NewLazySystemDLL("user32.dll")
+	findWindow, findWindowEx := user32.NewProc("FindWindowW"), user32.NewProc("FindWindowExW")
+	taskbar, _ := windows.UTF16PtrFromString("Shell_TrayWnd")
+	notify, _ := windows.UTF16PtrFromString("TrayNotifyWnd")
+	deadline := time.Now().Add(max)
+	for {
+		if h, _, _ := findWindow.Call(uintptr(unsafe.Pointer(taskbar)), 0); h != 0 {
+			if n, _, _ := findWindowEx.Call(h, 0, uintptr(unsafe.Pointer(notify)), 0); n != 0 {
+				time.Sleep(time.Second) // let the notification area finish initialising
+				return true
+			}
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 func checkWintun() error {
@@ -82,6 +120,7 @@ type trayUI struct {
 	iconOn    []byte
 	iconOff   []byte
 	toggleReq chan struct{}
+	ready     chan struct{} // closed once the tray icon exists
 
 	header, toggleItem, v6Item *systray.MenuItem
 	rows                       []*systray.MenuItem
@@ -94,6 +133,9 @@ type trayUI struct {
 }
 
 func (u *trayUI) onReady() {
+	if u.ready != nil {
+		close(u.ready)
+	}
 	systray.SetIcon(u.iconOff)
 	systray.SetTooltip("net-merge")
 	u.header = systray.AddMenuItem("net-merge", "")

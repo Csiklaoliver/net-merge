@@ -34,7 +34,7 @@ func taskXML(user, exe string) string {
 	return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo><Description>Starts net-merge (multi-adapter connection balancer) at sign-in.</Description></RegistrationInfo>
-  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>` + xmlEscape(user) + `</UserId></LogonTrigger></Triggers>
+  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>` + xmlEscape(user) + `</UserId><Delay>PT10S</Delay></LogonTrigger></Triggers>
   <Principals><Principal id="Author"><UserId>` + xmlEscape(user) + `</UserId><LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals>
   <Settings>
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
@@ -43,6 +43,7 @@ func taskXML(user, exe string) string {
     <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
     <AllowHardTerminate>true</AllowHardTerminate>
     <StartWhenAvailable>true</StartWhenAvailable>
+    <RestartOnFailure><Interval>PT1M</Interval><Count>5</Count></RestartOnFailure>
     <Enabled>true</Enabled>
   </Settings>
   <Actions Context="Author"><Exec><Command>` + xmlEscape(exe) + `</Command><Arguments>tray</Arguments></Exec></Actions>
