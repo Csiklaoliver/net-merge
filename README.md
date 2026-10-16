@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/github/license/rohit267/net-merge)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rohit267-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/rohit267)
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://paypal.me/champdev)
 
 **Use all your internet connections at the same time.**
 
@@ -171,4 +172,4 @@ More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
 ## Support
 
-net-merge is free. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/rohit267). Thank you!
+net-merge is free. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/rohit267) or [donate with PayPal](https://paypal.me/champdev). Thank you!
