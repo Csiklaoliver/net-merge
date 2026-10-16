@@ -22,6 +22,20 @@ jobs:
         if: runner.os == 'Linux'
         run: GOARCH=arm64 go build -o /dev/null ./cmd/net-merge
 
+  # System-wide mode for real, as root: TUN, routes, balancing over two uplinks, off, kill -9.
+  linux-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -o net-merge ./cmd/net-merge
+      - run: bash scripts/linux-e2e.sh ./net-merge
+      - name: net-merge logs
+        if: always()
+        run: cat /tmp/net-merge-e2e/*.log 2>/dev/null || true
+
   nix:
     runs-on: ubuntu-latest
     steps:

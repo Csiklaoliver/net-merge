@@ -54,7 +54,7 @@ root, and trusts the `net-merge` interface in the firewall:
 
 ```nix
 # flake.nix
-inputs.net-merge.url = "github:sidharthify/net-merge";
+inputs.net-merge.url = "github:rohit267/net-merge";
 
 # configuration.nix (with `inputs` passed via specialArgs)
 imports = [ inputs.net-merge.nixosModules.default ];
@@ -65,7 +65,7 @@ programs.net-merge = {
 };
 ```
 
-To try it without installing: `sudo nix run github:sidharthify/net-merge -- run`.
+To try it without installing: `sudo nix run github:rohit267/net-merge -- run`.
 
 ### Other Linux distributions
 
