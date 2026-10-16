@@ -5,7 +5,12 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
+- **Downloads for macOS and Linux.** Each release now also has `net-merge-X.Y.Z-macos-universal.tar.gz`
+  (Apple Silicon and Intel) and `net-merge-X.Y.Z-linux-x86_64.tar.gz` / `-linux-aarch64.tar.gz`. The steps
+  to run them are in the README.
 - **macOS support** (Apple Silicon and Intel). System-wide mode, the menu-bar tray, the SOCKS5 proxy, live
   per-adapter speeds and start at login (a LaunchAgent) all work. The TUN is a utun, flows are pinned with
   `IP_BOUND_IF` plus a scoped default route per adapter, and adapters come from the routing table. iPhone

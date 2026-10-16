@@ -14,6 +14,8 @@ if (-not $m.Success -or -not $m.Groups[1].Value.Trim()) {
 $install = "**Install:** download ``net-merge-setup-$Version.exe`` below and run it (needs admin; it upgrades " +
     "an existing install in place). A portable zip is attached too. Not code-signed yet, so SmartScreen " +
     "will warn: *More info > Run anyway*."
+$install += "`n`n**macOS and Linux:** download ``net-merge-$Version-macos-universal.tar.gz`` or " +
+    "``net-merge-$Version-linux-x86_64.tar.gz`` / ``-linux-aarch64.tar.gz`` and follow the Install section of the README."
 # UTF-8 without a BOM (Windows PowerShell's -Encoding utf8 adds one, which GitHub would show)
 $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Out)
 [IO.File]::WriteAllText($path, $install + "`n`n" + $m.Groups[1].Value.Trim() + "`n", (New-Object Text.UTF8Encoding $false))
