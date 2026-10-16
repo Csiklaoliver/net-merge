@@ -1,5 +1,12 @@
 # net-merge
 
+[![CI](https://github.com/rohit267/net-merge/actions/workflows/ci.yml/badge.svg)](https://github.com/rohit267/net-merge/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/rohit267/net-merge)](https://github.com/rohit267/net-merge/releases)
+[![Downloads](https://img.shields.io/github/downloads/rohit267/net-merge/total)](https://github.com/rohit267/net-merge/releases)
+[![License: MIT](https://img.shields.io/github/license/rohit267/net-merge)](LICENSE)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rohit267-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/rohit267)
+
 **Use all your internet connections at the same time.**
 
 Do you have Wi-Fi and a phone hotspot? Or Wi-Fi and an Ethernet cable? net-merge uses them all together,
@@ -161,3 +168,7 @@ More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 - What changed in each version: [CHANGELOG.md](CHANGELOG.md)
 - How it works, building from source, tests: [docs/DEVELOPING.md](docs/DEVELOPING.md)
 - License: MIT, see `LICENSE`. Third-party parts: `THIRD-PARTY-NOTICES.md`.
+
+## Support
+
+net-merge is free. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/rohit267). Thank you!
