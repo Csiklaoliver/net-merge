@@ -41,3 +41,27 @@ jobs:
           } else {
             gh release create $tag $files --title $title --notes-file release-notes.md
           }
+
+  # Adds the macOS build to the release the Windows job creates.
+  macos:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build universal binary
+        run: |
+          v='${{ github.ref_name }}'; v=${v#v}
+          for arch in arm64 amd64; do
+            CGO_ENABLED=1 GOARCH=$arch go build -ldflags "-s -w -X main.version=$v" -o net-merge-$arch ./cmd/net-merge
+          done
+          lipo -create -output net-merge net-merge-arm64 net-merge-amd64
+          codesign --force --sign - net-merge   # ad-hoc: lipo invalidates the per-arch signatures
+          mkdir dist
+          tar -czf dist/net-merge-$v-macos-universal.tar.gz net-merge LICENSE THIRD-PARTY-NOTICES.md
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload '${{ github.ref_name }}' dist/net-merge-*-macos-universal.tar.gz --clobber

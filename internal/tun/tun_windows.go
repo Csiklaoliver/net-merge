@@ -29,12 +29,12 @@ func init() {
 }
 
 // configure gives the new adapter its addresses, MTU and routes, and returns its index.
-func configure(mtu int) (int, error) {
-	if err := run("netsh", "interface", "ipv4", "set", "address", "name="+tunName, "source=static",
+func configure(name string, mtu int) (int, error) {
+	if err := run("netsh", "interface", "ipv4", "set", "address", "name="+name, "source=static",
 		"address="+tunIP, "mask="+tunMask, "store=active"); err != nil {
 		return 0, err
 	}
-	ifc, err := waitIface(tunName, 5*time.Second)
+	ifc, err := waitIface(name, 5*time.Second)
 	if err != nil {
 		return 0, err
 	}

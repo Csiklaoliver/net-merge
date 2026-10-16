@@ -1,6 +1,6 @@
 # net-merge
 
-Use all your network adapters at once on Windows and Linux (including NixOS). Every new connection (TCP and UDP, IPv4 and IPv6) is
+Use all your network adapters at once on Windows, macOS and Linux (including NixOS). Every new connection (TCP and UDP, IPv4 and IPv6) is
 pinned to one adapter (Wi-Fi, Ethernet, USB tether, phone hotspot), so many parallel connections
 (browsers, Steam, updates, downloads) run over all your links at the same time. A single connection is
 still limited to one link.
@@ -18,7 +18,7 @@ No server, VPN or account is involved: connections go straight out of the adapte
 
 ## Features
 
-- **Combines any adapters**: Wi-Fi, Ethernet, USB tethering, phone hotspots. Plug one in and it is used
+- **Combines any adapters**: Wi-Fi, Ethernet, USB tethering, phone hotspots (iPhone and Android). Plug one in and it is used
   within seconds; unplug it and its connections move to the others. VPN and virtual adapters (Tailscale,
   WireGuard, Hyper-V, WSL) are ignored.
 - **System-wide**: every app, TCP and UDP, IPv4 and IPv6. No proxy settings, nothing to configure per app.
@@ -27,7 +27,7 @@ No server, VPN or account is involved: connections go straight out of the adapte
   Wi-Fi) gets nothing until it recovers.
 - **Live speeds on hover**: each adapter's download/upload and the total. These are the adapters' real
   traffic from the OS, so apps that bypass net-merge (qBittorrent binds to adapters itself) still count.
-- **One click on and off**, and optional start at sign-in (on Windows without a UAC prompt).
+- **On and off from the tray menu**, and optional start at sign-in (on Windows without a UAC prompt).
 - **Safe to crash**: the virtual adapter and its routes disappear with the process, so a crash or a kill
   never leaves the PC without internet.
 - **Light on CPU**: about 0.18 cores per 100 Mbit/s.
@@ -45,6 +45,49 @@ No server, VPN or account is involved: connections go straight out of the adapte
 Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) and run it (needs admin).
 It is not code-signed yet, so SmartScreen will warn: *More info > Run anyway*. A portable zip is also
 published. What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+
+### macOS
+
+Works on Apple Silicon and Intel Macs. Download `net-merge-x.y.z-macos-universal.tar.gz` from the
+[releases page](../../releases), unpack it, and run these once:
+
+```
+xattr -d com.apple.quarantine net-merge   # only if macOS refuses to open it (it is not notarized yet)
+sudo ./net-merge install                  # copies it to /usr/local/bin and lets you start the tray without a password
+net-merge tray                            # a green/grey icon appears in the menu bar
+net-merge autostart on                    # optional: start at login
+```
+
+`sudo net-merge install` adds one rule that lets your user run only `net-merge tray` and `net-merge cleanup`
+as root. Remove everything with `sudo net-merge uninstall` (and `net-merge autostart off`). Without
+`install`, `net-merge tray` asks for your administrator password every time and start at login is not
+available. To build it yourself: `go build -o net-merge ./cmd/net-merge` (needs the Xcode command line tools).
+
+#### Getting a second connection on a Mac
+
+net-merge needs two or more real connections. Wi-Fi plus one of these:
+
+**iPhone (nothing to install)**
+1. Plug the iPhone in with a cable. Tap *Trust* on the iPhone if it asks.
+2. On the iPhone: *Settings > Personal Hotspot > Allow Others to Join*. Turn it on.
+3. An **iPhone USB** network appears on the Mac. When it gets an address, net-merge adds it within a few
+   seconds. `net-merge list` and `net-merge status` show it as `en5` (the number can differ).
+
+**Android (needs TetherKit)**
+
+macOS cannot use Android's USB tethering by itself, so Android needs a separate Mac app called
+**TetherKit**, which lets the Mac talk to the phone.
+1. Install and open TetherKit.
+2. Plug the phone in and turn on *USB tethering* in the phone's settings.
+3. Click **Apply** in TetherKit. A new network appears (`feth0`) and net-merge adds it within a few seconds.
+
+**Important with TetherKit:** start net-merge first, then connect the phone. macOS drops the TetherKit
+connection every time net-merge's virtual adapter is created or removed, which is when net-merge starts,
+quits, or is paused and resumed. If the phone disappears, just click **Apply** in TetherKit again. The
+iPhone is not affected the same way.
+
+A tethered phone uses its mobile data, so net-merge sends part of your traffic through it while it runs.
+Quit net-merge when you don't want that.
 
 ### NixOS
 
@@ -87,8 +130,8 @@ unsolicited input, trust the `net-merge` interface (e.g. `firewall-cmd --zone=tr
 
 ## How to use
 
-On Linux, start it with `net-merge tray` (or from your autostart); there is no admin prompt when the
-capability is set. The rest is the same.
+On Linux and macOS, start it with `net-merge tray` (or from your autostart); there is no admin prompt when
+the capability (Linux) or `net-merge install` (macOS) is set up. The rest is the same.
 
 1. Start **net-merge** from the Start menu and approve the admin prompt. A tray icon appears (if you
    don't see it, it is behind the `^` arrow next to the clock; drag it onto the taskbar).
@@ -96,10 +139,9 @@ capability is set. The rest is the same.
    They are picked up automatically.
 3. Use the tray icon:
    - **green** = merging, **grey** = paused
-   - **left-click** pauses or starts merging
    - **hover** shows each adapter's speed and the total
-   - **right-click** shows the same with full adapter names, how many connections net-merge has put
-     on each adapter, the IPv6 option, *Pause merging* / *Start merging*, and *Quit*
+   - **right-click** (or click) opens the menu: full adapter names with their speeds, how many connections
+     net-merge has put on each adapter, the IPv6 option, *Pause merging* / *Start merging*, and *Quit*
 4. To start it at sign-in, tick *Start net-merge when I sign in* in the installer, or run
    `net-merge autostart on` (on Linux this writes an XDG autostart entry; on NixOS prefer
    `programs.net-merge.autostart`).
@@ -125,6 +167,7 @@ net-merge tray            tray app (asks for admin once)
 net-merge run             system-wide in a console window
 net-merge socks           plain SOCKS5 proxy on 127.0.0.1:1080 (no admin, per-app)
 net-merge cleanup         remove leftover routes after a crash
+net-merge install         macOS only: sudo net-merge install, lets the tray start without a password
 net-merge version
 ```
 
@@ -134,17 +177,17 @@ Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters)
 
 ## How it works
 
-- ON creates a virtual adapter `net-merge` (Wintun on Windows, a kernel TUN on Linux) and two `/1` routes per IP family that beat the default route
+- ON creates a virtual adapter `net-merge` (Wintun on Windows, a kernel TUN on Linux, a utun on macOS) and two `/1` routes per IP family that beat the default route
   without touching it. OFF deletes them. If the process dies the adapter and routes die with it, so a
   crash can't leave the machine without internet.
 - Flows entering the TUN are terminated in a userland TCP/IP stack (tun2socks/gVisor) and re-dialed from
   a chosen adapter: the socket is bound to that adapter's source IP and forced out of it with
-  `IP_UNICAST_IF` (Windows) or `SO_BINDTOIFINDEX` (Linux), so it can never loop back into the TUN.
+  `IP_UNICAST_IF` (Windows), `SO_BINDTOIFINDEX` (Linux) or `IP_BOUND_IF` (macOS, plus a scoped default route per adapter so the bound lookup still works), so it can never loop back into the TUN.
 - The virtual adapter runs at MTU 9000 (both the OS and the userland stack). Its traffic never leaves
   the machine, so the links' 1500 doesn't apply, and bigger packets cost far less CPU: measured about
   3x less CPU per Mbit/s than at 1500 (0.18 vs 0.54 cores per 100 Mbit/s). `-mtu` changes it.
 - Adapters are detected automatically and re-scanned every 3 s. Only real hardware with a default route
-  is used (on Linux: interfaces backed by a device in sysfs, with a default route in any routing table): tunnels, VPNs (Tailscale, WireGuard, ...), virtual switches and LAN-only adapters are skipped
+  is used (on Linux: interfaces backed by a device in sysfs, with a default route in any routing table; on macOS: `enN` interfaces, and TetherKit's `fethN`, with a default route): tunnels, VPNs (Tailscale, WireGuard, ...), virtual switches and LAN-only adapters are skipped
   (`net-merge list` shows why).
 - Each adapter and each address family is probed for real internet access. A tether with no data or a
   captive-portal Wi-Fi gets no flows; a recovered link rejoins within seconds.
@@ -162,7 +205,7 @@ Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters)
 - One connection = one adapter. A single big download won't speed up; many connections will.
 - With adapters that differ in IPv6 support, IPv6-only hosts are unreachable in `auto` mode (see above).
 - Sites that tie a login to one IP may see a different IP per connection and ask you to re-verify.
-- Needs admin (for the TUN). Windows 10/11 x64, or Linux (x86_64, aarch64) with root or
+- Needs admin (for the TUN). Windows 10/11 x64, macOS (Apple Silicon or Intel) or Linux (x86_64, aarch64) with root or
   `CAP_NET_ADMIN`.
 
 ## Build
@@ -171,7 +214,7 @@ Needs Go (see `go.mod`) and, for the Windows installer, [Inno Setup 6](https://j
 
 ```
 go test ./...                       # uses loopback aliases as fake adapters; no second link needed
-go build -o net-merge ./cmd/net-merge   # Linux
+go build -o net-merge ./cmd/net-merge   # Linux, macOS (macOS needs the Xcode command line tools)
 nix build                           # Linux, with Nix: result/bin/net-merge
 scripts\build.ps1 -Version 0.1.0    # dist\: net-merge.exe, net-merge-tray.exe, installer, portable zip
 ```
@@ -190,7 +233,7 @@ without it (`scripts\release-notes.ps1 -Version X.Y.Z` previews them).
 Layout: `cmd/net-merge` is the command line; `internal/engine` the scheduler, balancer, probes and
 SOCKS5 front-end; `internal/nics` adapter discovery, counters and egress pinning; `internal/tun` the
 system-wide front-end; `internal/tray` the tray icon; `internal/platform` privileges, single instance
-and autostart. OS-specific code lives in `_windows.go` / `_linux.go` files next to the shared code. The
+and autostart. OS-specific code lives in `_windows.go` / `_linux.go` / `_darwin.go` files next to the shared code. The
 Nix package and NixOS module are in `nix/`; after changing Go dependencies, update `vendorHash` in
 `nix/package.nix` (`nix build` prints the new one).
 

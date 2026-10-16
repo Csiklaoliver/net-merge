@@ -36,6 +36,12 @@ const (
 	tunIP6 = "fd6e:6d65:7267::1"
 )
 
+// openName is what the OS is asked to call the adapter; macOS only accepts "utunN" and picks the number.
+var openName = tunName
+
+// staleHook, if set by a platform, also clears what a crashed run left outside the adapter.
+var staleHook func()
+
 // Two /1 routes per family beat any default route (/0) without touching it, so Off() is just
 // deleting these.
 var (
@@ -105,7 +111,7 @@ func (t *Tun) On() (err error) {
 	tunnel.T().SetUDPTimeout(udpSessionTimeout)
 	CleanupStale()
 
-	dev, err := tun.Open(tunName, uint32(t.MTU))
+	dev, err := tun.Open(openName, uint32(t.MTU))
 	if err != nil {
 		return fmt.Errorf("open TUN (%s): %w", openHint, err)
 	}
@@ -127,7 +133,7 @@ func (t *Tun) On() (err error) {
 	}()
 	tunnel.T().SetProxy(tunProxy{t.B})
 
-	if t.idx, err = configure(t.MTU); err != nil {
+	if t.idx, err = configure(dev.Name(), t.MTU); err != nil {
 		return err
 	}
 	t.on = true
@@ -161,6 +167,9 @@ func (t *Tun) teardown() {
 
 // CleanupStale removes routes left on a surviving net-merge adapter (e.g. after a crash).
 func CleanupStale() {
+	if staleHook != nil {
+		staleHook()
+	}
 	if ifc, err := net.InterfaceByName(tunName); err == nil {
 		delRoutes(ifc.Index)
 	}

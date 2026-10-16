@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"net-merge/internal/engine"
@@ -23,11 +24,26 @@ type Status struct {
 }
 
 func DefaultDir() string {
+	// The macOS tray runs as root but is commanded by the user, so its state can't live in a
+	// user-owned directory (root would follow a planted symlink): a fixed root-owned path.
+	if runtime.GOOS == "darwin" {
+		return "/var/run/net-merge"
+	}
 	base, err := os.UserCacheDir()
 	if err != nil {
 		base = os.TempDir()
 	}
 	return filepath.Join(base, "net-merge")
+}
+
+// Prepare creates the state dir, with markers going in a sticky world-writable ctl/ inside it, so
+// a normal user can drop one without being able to touch anything else there.
+func Prepare(dir string) error {
+	ctl := filepath.Join(dir, "ctl")
+	if err := os.MkdirAll(ctl, 0o755); err != nil {
+		return err
+	}
+	return os.Chmod(ctl, os.ModeSticky|0o777)
 }
 
 func Write(dir string, st Status) {
@@ -57,11 +73,11 @@ func Read(dir string) (*Status, bool) {
 }
 
 func SendMarker(dir, name string) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "ctl"), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, name), nil, 0o644)
+	return os.WriteFile(filepath.Join(dir, "ctl", name), nil, 0o666)
 }
 
 // TakeMarker consumes a marker, reporting whether it was there.
-func TakeMarker(dir, name string) bool { return os.Remove(filepath.Join(dir, name)) == nil }
+func TakeMarker(dir, name string) bool { return os.Remove(filepath.Join(dir, "ctl", name)) == nil }

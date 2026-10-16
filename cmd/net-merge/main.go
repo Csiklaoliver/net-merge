@@ -22,7 +22,7 @@ import (
 
 const usage = `net-merge: use all your network adapters at once.
 
-  net-merge tray       tray icon: left-click toggles system-wide ON/OFF, right-click shows speeds
+  net-merge tray       tray icon: its menu turns system-wide ON/OFF and shows speeds
   net-merge run        system-wide ON in a console window (asks for admin/root); Ctrl+C or "off" turns it OFF
   net-merge on|off     turn system-wide mode on/off in a running tray (off also works for run)
   net-merge quit       turn it off and exit the tray
@@ -31,6 +31,7 @@ const usage = `net-merge: use all your network adapters at once.
   net-merge list       show detected adapters
   net-merge autostart on|off|status   start the tray at sign-in (Windows: no UAC prompt)
   net-merge cleanup    remove leftover routes after a crash (admin/root)
+  net-merge install    macOS: sudo net-merge install lets the tray start without a password
   net-merge version
 
 Flags for run/socks: -include "WiFi,Ethernet 3"  -weight "Name=3"  -auto-weight=false  -stats 5s
@@ -96,7 +97,8 @@ func (c *common) nics() ([]nics.Nic, error) {
 
 // setup opens the log file (if any) and the state dir.
 func (c *common) setup() error {
-	if err := os.MkdirAll(c.stateDir, 0o755); err != nil {
+	// Without admin (`socks`) there may be no state dir to make, e.g. the root-owned one on macOS.
+	if err := state.Prepare(c.stateDir); err != nil && platform.IsAdmin() {
 		return err
 	}
 	if c.logFile != "" {
@@ -222,6 +224,10 @@ func main() {
 	switch cmd {
 	case "version":
 		fmt.Println("net-merge", version)
+	case "install", "uninstall":
+		if err := platform.Install(cmd == "uninstall"); err != nil {
+			die(err)
+		}
 	case "autostart":
 		if len(args) != 1 || (args[0] != "on" && args[0] != "off" && args[0] != "status") {
 			fmt.Fprintln(os.Stderr, "usage: net-merge autostart on|off|status")
@@ -319,7 +325,7 @@ func cmdRun(args []string) {
 		// Re-run elevated, handing over where to log and keep state.
 		child := append([]string{"run"}, args...)
 		child = append(child, "-state-dir", c.stateDir)
-		os.MkdirAll(c.stateDir, 0o755) // as this user, so `net-merge off` can still drop markers in it
+		state.Prepare(c.stateDir) // as this user, so `net-merge off` can still drop markers in it
 		if err := platform.RelaunchElevated(child, *hidden); err != nil {
 			die(fmt.Errorf("could not start elevated: %w", err))
 		}

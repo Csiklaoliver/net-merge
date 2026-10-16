@@ -4,11 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"net-merge/internal/logx"
 	"net-merge/internal/platform"
+	"net-merge/internal/state"
 	"net-merge/internal/tray"
 	"net-merge/internal/tun"
 )
@@ -23,11 +26,13 @@ func cmdTray(args []string) {
 
 	if !platform.IsAdmin() {
 		child := append([]string{"tray"}, args...)
-		child = append(child, "-state-dir", c.stateDir)
+		if c.stateDir != state.DefaultDir() { // the macOS passwordless rule only matches a bare `tray`
+			child = append(child, "-state-dir", c.stateDir)
+		}
 		if err := platform.RelaunchTray(child, *hidden); err != nil {
 			die(err)
 		}
-		fmt.Println("Approve the UAC prompt. Look for the net-merge icon in the system tray (^ overflow arrow).")
+		fmt.Println("Approve the admin prompt. Look for the net-merge icon in the system tray (^ overflow arrow) or menu bar.")
 		return
 	}
 	if !platform.SingleInstance() {
@@ -74,6 +79,14 @@ func cmdTray(args []string) {
 			logx.Printf("error: tray icon did not initialise within 30s; exiting so autostart can restart it\n")
 			os.Exit(4)
 		}
+	}()
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	go func() { // logout, `launchctl bootout`, kill: turn off cleanly instead of leaving routes behind
+		<-sig
+		t.Off()
+		state.Clear(c.stateDir)
+		os.Exit(0)
 	}()
 	tray.Run(t, sched, bal, c.stateDir, !*startOff, ready)
 }
