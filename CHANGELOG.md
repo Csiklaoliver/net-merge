@@ -6,6 +6,11 @@ entry here before pushing a version tag.
 ## [Unreleased]
 
 ### Added
+- **macOS support** (Apple Silicon and Intel). System-wide mode, the menu-bar tray, the SOCKS5 proxy, live
+  per-adapter speeds and start at login (a LaunchAgent) all work. The TUN is a utun, flows are pinned with
+  `IP_BOUND_IF` plus a scoped default route per adapter, and adapters come from the routing table. iPhone
+  hotspot over USB works as is; Android USB tethering needs the TetherKit app. `sudo net-merge install`
+  sets up a passwordless rule for `net-merge tray`.
 - **Linux support**, including NixOS. System-wide mode, the tray icon (any desktop with
   StatusNotifierItem support: KDE, GNOME with the AppIndicator extension, XFCE, Cinnamon, ...), the
   SOCKS5 proxy, live per-adapter speeds and autostart (XDG autostart entry) all work. The TUN and
@@ -16,6 +21,8 @@ entry here before pushing a version tag.
   graphical session.
 
 ### Changed
+- Clicking the tray icon no longer turns merging on or off (it was easy to hit by accident). Open the
+  menu (right-click) and choose *Pause merging* / *Start merging*.
 - The source is split into packages: `cmd/net-merge` (the command) and `internal/...` (engine, nics,
   tun, tray, platform, state, icon, logx). Build with `go build ./cmd/net-merge`.
 

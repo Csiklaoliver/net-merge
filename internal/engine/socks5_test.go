@@ -36,8 +36,22 @@ func startTarget(t *testing.T) int {
 	return ln.Addr().(*net.TCPAddr).Port
 }
 
+// needLoopbackAliases skips when 127.0.0.2/3 can't be bound. Linux and Windows answer for all of
+// 127/8; macOS needs `sudo ifconfig lo0 alias 127.0.0.2/32` (and .3) first.
+func needLoopbackAliases(t testing.TB) {
+	t.Helper()
+	for _, ip := range []string{"127.0.0.2", "127.0.0.3"} {
+		ln, err := net.Listen("tcp4", ip+":0")
+		if err != nil {
+			t.Skipf("%s is not bindable; on macOS run: sudo ifconfig lo0 alias %s/32", ip, ip)
+		}
+		ln.Close()
+	}
+}
+
 func startProxy(t *testing.T, nics []nics.Nic) (*Scheduler, string) {
 	t.Helper()
+	needLoopbackAliases(t)
 	s := NewScheduler(nics)
 	b := NewBalancer(s)
 	b.ConnectTimeout = 2 * time.Second
@@ -233,6 +247,7 @@ func TestHalfCloseStillDeliversReply(t *testing.T) {
 
 // Raw relay throughput through the proxy over loopback (the CPU ceiling of the data path).
 func benchRelay(b *testing.B, streams int) {
+	needLoopbackAliases(b)
 	ln, _ := net.Listen("tcp4", "127.0.0.1:0")
 	defer ln.Close()
 	chunk := make([]byte, 256<<10)

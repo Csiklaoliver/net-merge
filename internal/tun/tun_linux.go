@@ -15,10 +15,10 @@ const openHint = "needs root or CAP_NET_ADMIN, and /dev/net/tun"
 // configure gives the new adapter its addresses and routes, and returns its index. tun2socks has
 // already set the MTU. Everything goes through netlink rather than `ip`, so it also works when the
 // privilege is a file capability, which child processes don't inherit.
-func configure(int) (int, error) {
-	link, err := netlink.LinkByName(tunName)
+func configure(name string, _ int) (int, error) {
+	link, err := netlink.LinkByName(name)
 	if err != nil {
-		return 0, fmt.Errorf("adapter %q did not appear: %w", tunName, err)
+		return 0, fmt.Errorf("adapter %q did not appear: %w", name, err)
 	}
 	idx := link.Attrs().Index
 	if err := netlink.AddrReplace(link, &netlink.Addr{IPNet: hostCIDR(tunIP + "/24")}); err != nil {

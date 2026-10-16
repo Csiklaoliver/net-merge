@@ -23,20 +23,21 @@ const trayRows = 4 // adapters shown in the menu; extra rows stay hidden
 // closes ready once the icon exists.
 func Run(t *tun.Tun, sched *engine.Scheduler, bal *engine.Balancer, stateDir string, startOn bool, ready chan struct{}) {
 	ui := &trayUI{tun: t, sched: sched, bal: bal, stateDir: stateDir, startOn: startOn,
-		iconOn: icon.Tray(true), iconOff: icon.Tray(false), toggleReq: make(chan struct{}, 1), ready: ready}
-	systray.Run(ui.onReady, func() { t.Off(); state.Clear(stateDir) })
+		iconOn: icon.Tray(true), iconOff: icon.Tray(false), ready: ready}
+	exit := func() { t.Off(); state.Clear(stateDir) }
+	systray.Run(ui.onReady, exit)
+	exit() // macOS's Run returns on Quit without calling onExit; both are idempotent
 }
 
 type trayUI struct {
-	tun       *tun.Tun
-	bal       *engine.Balancer
-	sched     *engine.Scheduler
-	stateDir  string
-	startOn   bool
-	iconOn    []byte
-	iconOff   []byte
-	toggleReq chan struct{}
-	ready     chan struct{} // closed once the tray icon exists
+	tun      *tun.Tun
+	bal      *engine.Balancer
+	sched    *engine.Scheduler
+	stateDir string
+	startOn  bool
+	iconOn   []byte
+	iconOff  []byte
+	ready    chan struct{} // closed once the tray icon exists
 
 	header, toggleItem, v6Item *systray.MenuItem
 	rows                       []*systray.MenuItem
@@ -65,14 +66,8 @@ func (u *trayUI) onReady() {
 	}
 	systray.AddSeparator()
 	u.v6Item = systray.AddMenuItemCheckbox("Use all adapters (IPv6 only if every adapter has it)", "Ticked: apps are pushed to IPv4 so every adapter is used. Unticked: IPv6 is allowed and funnels onto the adapters that have it.", u.bal.V6Mode() == engine.V6Auto)
-	u.toggleItem = systray.AddMenuItem("Start merging", "Left-click the tray icon does the same")
+	u.toggleItem = systray.AddMenuItem("Start merging", "")
 	quit := systray.AddMenuItem("Quit", "Turns system-wide mode off and exits")
-	systray.SetOnTapped(func() {
-		select {
-		case u.toggleReq <- struct{}{}:
-		default:
-		}
-	})
 
 	go func() {
 		if u.startOn {
@@ -84,8 +79,6 @@ func (u *trayUI) onReady() {
 			u.refresh()
 			select {
 			case <-u.toggleItem.ClickedCh:
-				u.turn(!u.tun.IsOn())
-			case <-u.toggleReq:
 				u.turn(!u.tun.IsOn())
 			case <-u.v6Item.ClickedCh:
 				if u.v6Item.Checked() {
