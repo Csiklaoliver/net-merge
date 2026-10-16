@@ -1,25 +1,47 @@
-# net-merge
+<p align="center">
+  <img src="docs/icon.png" width="128" alt="net-merge icon">
+</p>
 
-[![CI](https://github.com/rohit267/net-merge/actions/workflows/ci.yml/badge.svg)](https://github.com/rohit267/net-merge/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/rohit267/net-merge)](https://github.com/rohit267/net-merge/releases)
-[![Downloads](https://img.shields.io/github/downloads/rohit267/net-merge/total)](https://github.com/rohit267/net-merge/releases)
-[![License: MIT](https://img.shields.io/github/license/rohit267/net-merge)](LICENSE)
-![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)
-[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rohit267-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/rohit267)
-[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://paypal.me/champdev)
+<h1 align="center">net-merge</h1>
 
-**Use all your internet connections at the same time.**
+<p align="center">
+  <strong>Use all your internet connections at the same time.</strong><br>
+  Combine Wi-Fi, Ethernet and phone hotspots, so downloads, games and browsers get the speed of every connection added up.
+</p>
 
-Do you have Wi-Fi and a phone hotspot? Or Wi-Fi and an Ethernet cable? net-merge uses them all together,
-so downloads, games and browsers get the speed of every connection added up. It works on **Windows,
-macOS and Linux**. It is free. There is no account, no server and no VPN.
+<p align="center">
+  <a href="https://github.com/rohit267/net-merge/releases/latest">Download</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#add-a-second-connection">Add a second connection</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
+  <a href="docs/DEVELOPING.md">How it works</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/rohit267/net-merge/actions/workflows/ci.yml"><img src="https://github.com/rohit267/net-merge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rohit267/net-merge/releases"><img src="https://img.shields.io/github/v/release/rohit267/net-merge" alt="Latest release"></a>
+  <a href="https://github.com/rohit267/net-merge/releases"><img src="https://img.shields.io/github/downloads/rohit267/net-merge/total" alt="Downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/rohit267/net-merge" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Windows, macOS and Linux">
+  <a href="https://buymeacoffee.com/rohit267"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-rohit267-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+  <a href="https://paypal.me/champdev"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" width="600" alt="Speed test on a Mac with Wi-Fi and an Android phone: the net-merge menu shows both connections carrying traffic, and the download reaches about 326 Mbit/s">
+  <br>
+  <sub>A Mac with Wi-Fi + an Android phone. The menu shows both connections working at once. <a href="docs/demo.mp4">Watch the full 45-second video.</a></sub>
+</p>
+
+net-merge uses all your network adapters together. It works on **Windows, macOS and Linux**. It is free.
+There is no account, no server and no VPN.
 
 A real test with Wi-Fi + an Android USB tether + an iPhone hotspot, 9 downloads at once:
 **232-303 Mbit/s**. The fastest connection alone gave about 121 Mbit/s.
 
-| Hover the tray icon | Right-click the tray icon |
-|---|---|
-| ![Tooltip: Merging, speed of each adapter and the total](docs/tray-tooltip.png) | ![Menu: total, each adapter's speed and flows, IPv6 option, Pause merging, Quit](docs/tray-menu.png) |
+| Windows: hover the icon | Windows: the menu | macOS: the menu bar |
+|---|---|---|
+| ![Tooltip: Merging, speed of each adapter and the total](docs/tray-tooltip.png) | ![Menu: total, each adapter's speed and flows, IPv6 option, Pause merging, Quit](docs/tray-menu.png) | ![macOS menu: total 399 Mbit/s, en0 and feth0 each with their flows, Pause merging, Quit](docs/tray-menu-macos.png) |
 
 ## How it helps
 
@@ -141,6 +163,77 @@ Tips:
 - `net-merge list` shows which connections are used and why others are skipped. `net-merge status`
   shows live numbers.
 
+## Troubleshooting
+
+<details>
+<summary><strong>A second connection does not make things faster</strong></summary>
+<br>
+
+You only gain speed when each connection reaches the internet by its own path. Wi-Fi from your home
+router plus a phone on mobile data works. Wi-Fi and Ethernet plugged into the **same router** do not: they
+share one internet line, so the total stays the same.
+
+Also remember that one connection always uses one link. Many parallel connections (Steam, browsers,
+download managers) are what speed up. Run `net-merge status` to see how many connections each link carries.
+</details>
+
+<details>
+<summary><strong>A connection does not show up</strong></summary>
+<br>
+
+Run `net-merge list`. It shows which connections are used and why the others are skipped, for example
+"no default gateway" (the link has no internet yet).
+
+- **iPhone on a Mac:** plug it in, tap *Trust*, and turn on *Settings > Personal Hotspot > Allow Others to
+  Join*. If the **iPhone USB** network in *System Settings > Network* stays inactive, turn off its
+  **Disable unless needed** switch.
+- **Android on a Mac:** install **TetherKit** and click **Apply** (see above).
+- **Phone on Windows:** if the phone does not appear in *Network Settings*, install your phone maker's USB
+  driver.
+</details>
+
+<details>
+<summary><strong>The Android connection disappears on a Mac</strong></summary>
+<br>
+
+macOS drops the TetherKit connection each time net-merge starts, quits, or is paused and resumed. Start
+net-merge first, then connect the phone. If it vanishes, click **Apply** in TetherKit again.
+</details>
+
+<details>
+<summary><strong>Windows uses only one network</strong></summary>
+<br>
+
+Windows can switch Wi-Fi off when Ethernet is plugged in. Open the Group Policy Editor (`gpedit.msc`),
+go to *Computer Configuration > Administrative Templates > Network > Windows Connection Manager*, and set
+**Minimize the number of simultaneous connections to the Internet or a Windows domain** to **Disabled**.
+</details>
+
+<details>
+<summary><strong>macOS says it cannot open net-merge, or Windows says "protected your PC"</strong></summary>
+<br>
+
+The apps are not code-signed yet. On macOS run `xattr -d com.apple.quarantine net-merge`. On Windows click
+*More info*, then *Run anyway*.
+</details>
+
+<details>
+<summary><strong>I cannot find the tray icon</strong></summary>
+<br>
+
+On Windows it may be behind the `^` arrow next to the clock. On macOS it is in the menu bar. On Linux the
+desktop needs StatusNotifierItem support (KDE, XFCE, Cinnamon, LXQt, Budgie, or GNOME with the *AppIndicator
+and KStatusNotifierItem Support* extension).
+</details>
+
+<details>
+<summary><strong>A site asks me to log in again</strong></summary>
+<br>
+
+net-merge may use a different IP for each connection, and some sites tie your login to one IP. That is a
+limit of splitting connections over several links.
+</details>
+
 ## Commands
 
 ```
@@ -168,6 +261,7 @@ More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
 - What changed in each version: [CHANGELOG.md](CHANGELOG.md)
 - How it works, building from source, tests: [docs/DEVELOPING.md](docs/DEVELOPING.md)
+- Want to help? [CONTRIBUTING.md](CONTRIBUTING.md). Found a security problem? [SECURITY.md](SECURITY.md)
 - License: MIT, see `LICENSE`. Third-party parts: `THIRD-PARTY-NOTICES.md`.
 
 ## Support
