@@ -1,100 +1,79 @@
 # net-merge
 
-Use all your network adapters at once on Windows, macOS and Linux (including NixOS). Every new connection (TCP and UDP, IPv4 and IPv6) is
-pinned to one adapter (Wi-Fi, Ethernet, USB tether, phone hotspot), so many parallel connections
-(browsers, Steam, updates, downloads) run over all your links at the same time. A single connection is
-still limited to one link.
+**Use all your internet connections at the same time.**
 
-Measured with Wi-Fi + an Android USB tether + an iPhone hotspot, 9 parallel downloads:
-**232-303 Mbit/s** vs about 121 Mbit/s for the fastest single link.
+Do you have Wi-Fi and a phone hotspot? Or Wi-Fi and an Ethernet cable? net-merge uses them all together,
+so downloads, games and browsers get the speed of every connection added up. It works on **Windows,
+macOS and Linux**. It is free. There is no account, no server and no VPN.
 
-No server, VPN or account is involved: connections go straight out of the adapter they are assigned to.
-
-## Screenshots
+A real test with Wi-Fi + an Android USB tether + an iPhone hotspot, 9 downloads at once:
+**232-303 Mbit/s**. The fastest connection alone gave about 121 Mbit/s.
 
 | Hover the tray icon | Right-click the tray icon |
 |---|---|
 | ![Tooltip: Merging, speed of each adapter and the total](docs/tray-tooltip.png) | ![Menu: total, each adapter's speed and flows, IPv6 option, Pause merging, Quit](docs/tray-menu.png) |
 
-## Features
+## How it helps
 
-- **Combines any adapters**: Wi-Fi, Ethernet, USB tethering, phone hotspots (iPhone and Android). Plug one in and it is used
-  within seconds; unplug it and its connections move to the others. VPN and virtual adapters (Tailscale,
-  WireGuard, Hyper-V, WSL) are ignored.
-- **System-wide**: every app, TCP and UDP, IPv4 and IPv6. No proxy settings, nothing to configure per app.
-- **Balances by real speed**: each link gets new connections in proportion to its measured throughput,
-  tracked separately for IPv4 and IPv6. A link with no internet (tether without data, captive-portal
-  Wi-Fi) gets nothing until it recovers.
-- **Live speeds on hover**: each adapter's download/upload and the total. These are the adapters' real
-  traffic from the OS, so apps that bypass net-merge (qBittorrent binds to adapters itself) still count.
-- **On and off from the tray menu**, and optional start at sign-in (on Windows without a UAC prompt).
-- **Safe to crash**: the virtual adapter and its routes disappear with the process, so a crash or a kill
-  never leaves the PC without internet.
-- **Light on CPU**: about 0.18 cores per 100 Mbit/s.
+net-merge gives every new connection to one of your links. When an app opens many connections, they
+spread over all your links.
 
-## Uses and Tested on
-- Steam downloads
-- Torrent Downloads
-- Large file uploads to Google Drive
-- Large file downloads using IDM (If server supports multiple connections)
+- **Good for:** Steam and game downloads, browsers, system updates, cloud uploads (Google Drive),
+  download managers like IDM, torrents.
+- **Not for:** one single connection. One connection always uses one link, so one big file from one
+  connection does not get faster.
+- **Works for every app**, TCP and UDP, IPv4 and IPv6. You do not set up a proxy.
+- **Smart:** faster links get more connections. A link with no internet gets none until it works again.
+- **Safe:** if net-merge crashes, your internet keeps working.
+- **Light:** about 0.18 CPU cores per 100 Mbit/s.
 
 ## Install
 
 ### Windows
 
-Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) and run it (needs admin).
-It is not code-signed yet, so SmartScreen will warn: *More info > Run anyway*. A portable zip is also
-published. What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+1. Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) and run it. It needs admin.
+2. Windows may warn you because the app is not signed yet. Click *More info*, then *Run anyway*.
+3. Open **net-merge** from the Start menu. A tray icon appears. If you do not see it, it is behind the
+   `^` arrow next to the clock.
 
-### macOS
+There is also a portable zip on the releases page.
 
-Works on Apple Silicon and Intel Macs. Download `net-merge-x.y.z-macos-universal.tar.gz` from the
-[releases page](../../releases), unpack it, and run these once:
+### macOS (Apple Silicon and Intel)
+
+1. Download `net-merge-x.y.z-macos-universal.tar.gz` from the [releases page](../../releases).
+2. Open Terminal in that folder and run:
 
 ```
 tar xzf net-merge-*-macos-universal.tar.gz
-xattr -d com.apple.quarantine net-merge   # only if macOS refuses to open it (it is not notarized yet)
-sudo ./net-merge install                  # copies it to /usr/local/bin and lets you start the tray without a password
-net-merge tray                            # a green/grey icon appears in the menu bar
-net-merge autostart on                    # optional: start at login
+xattr -d com.apple.quarantine net-merge     # only if macOS says it can't open it
+sudo ./net-merge install                    # once: lets the tray start without a password
+net-merge tray                              # a green/grey icon appears in the menu bar
 ```
 
-`sudo net-merge install` adds one rule that lets your user run only `net-merge tray` and `net-merge cleanup`
-as root. Remove everything with `sudo net-merge uninstall` (and `net-merge autostart off`). Without
-`install`, `net-merge tray` asks for your administrator password every time and start at login is not
-available. To build it yourself: `go build -o net-merge ./cmd/net-merge` (needs the Xcode command line tools).
+3. Optional: `net-merge autostart on` to start it when you log in.
 
-#### Getting a second connection on a Mac
+`install` adds one small rule so that only `net-merge tray` can run as root without a password. To remove
+it all: `net-merge autostart off` and `sudo net-merge uninstall`.
 
-net-merge needs two or more real connections. Wi-Fi plus one of these:
+### Linux
 
-**iPhone (nothing to install)**
-1. Plug the iPhone in with a cable. Tap *Trust* on the iPhone if it asks.
-2. On the iPhone: *Settings > Personal Hotspot > Allow Others to Join*. Turn it on.
-3. An **iPhone USB** network appears on the Mac. When it gets an address, net-merge adds it within a few
-   seconds. `net-merge list` and `net-merge status` show it as `en5` (the number can differ).
+1. Download `net-merge-x.y.z-linux-x86_64.tar.gz` (or `-linux-aarch64.tar.gz` for ARM) from the
+   [releases page](../../releases).
+2. Run:
 
-**Android (needs TetherKit)**
+```
+tar xzf net-merge-*-linux-*.tar.gz
+sudo install -m 755 net-merge /usr/local/bin/
+sudo setcap cap_net_admin,cap_net_raw+ep /usr/local/bin/net-merge
+net-merge tray
+```
 
-macOS cannot use Android's USB tethering by itself, so Android needs a separate Mac app called
-**TetherKit**, which lets the Mac talk to the phone.
-1. Install and open TetherKit.
-2. Plug the phone in and turn on *USB tethering* in the phone's settings.
-3. Click **Apply** in TetherKit. A new network appears (`feth0`) and net-merge adds it within a few seconds.
-
-**Important with TetherKit:** start net-merge first, then connect the phone. macOS drops the TetherKit
-connection every time net-merge's virtual adapter is created or removed, which is when net-merge starts,
-quits, or is paused and resumed. If the phone disappears, just click **Apply** in TetherKit again. The
-iPhone is not affected the same way.
-
-A tethered phone uses its mobile data, so net-merge sends part of your traffic through it while it runs.
-Quit net-merge when you don't want that.
+The `setcap` line lets net-merge work without root. The tray icon needs a desktop that supports
+StatusNotifierItem: KDE, XFCE, Cinnamon, LXQt, Budgie, or GNOME with the *AppIndicator and
+KStatusNotifierItem Support* extension. If your firewall blocks unknown traffic, trust the `net-merge`
+interface (for example `firewall-cmd --zone=trusted --add-interface=net-merge`).
 
 ### NixOS
-
-Add the flake and enable the module. It installs `net-merge` as a capability wrapper
-(`/run/wrappers/bin/net-merge` with `CAP_NET_ADMIN`), so the tray and `net-merge run` work without
-root, and trusts the `net-merge` interface in the firewall:
 
 ```nix
 # flake.nix
@@ -104,149 +83,81 @@ inputs.net-merge.url = "github:rohit267/net-merge";
 imports = [ inputs.net-merge.nixosModules.default ];
 programs.net-merge = {
   enable = true;
-  autostart = true;   # optional: start the tray in every graphical session (systemd user service)
-  # extraArgs = [ "-ipv6" "on" ];
+  autostart = true;   # optional: start the tray in every graphical session
 };
 ```
 
 To try it without installing: `sudo nix run github:rohit267/net-merge -- run`.
 
-### Other Linux distributions
+## Add a second connection
 
-Download `net-merge-x.y.z-linux-x86_64.tar.gz` (or `-linux-aarch64.tar.gz` for ARM) from the
-[releases page](../../releases), unpack it, put it on your `PATH`, and give it the capability once so it
-runs without root:
+net-merge needs **two or more** real connections. Use Wi-Fi plus one of these: a phone (USB tethering or
+hotspot), an Ethernet cable, or a second Wi-Fi. Plug it in and net-merge adds it within a few seconds.
+When you unplug it, its connections move to the others.
 
-```
-tar xzf net-merge-*-linux-*.tar.gz
-sudo install -m 755 net-merge /usr/local/bin/
-sudo setcap cap_net_admin,cap_net_raw+ep /usr/local/bin/net-merge
-net-merge tray
-```
+**Windows and Linux:** plug the phone in and turn on *USB tethering* (Android) or *Personal Hotspot*
+(iPhone). That is all.
 
-To build it yourself instead, see [Build](#build) (`go build -o net-merge ./cmd/net-merge`).
+**Mac with an iPhone** (nothing extra to install)
+1. Plug the iPhone in with a cable. Tap *Trust* on the iPhone if it asks.
+2. On the iPhone, open *Settings > Personal Hotspot* and turn on *Allow Others to Join*.
+3. An **iPhone USB** network appears on the Mac. net-merge adds it in a few seconds.
 
-Without the capability, `net-merge run` asks for your password through `sudo` (or `pkexec` without a
-terminal); the tray can't run as root, because its icon lives on your desktop session's D-Bus. The
-tray icon needs a desktop with StatusNotifierItem support: KDE, XFCE, Cinnamon, LXQt, Budgie, or GNOME
-with the *AppIndicator and KStatusNotifierItem Support* extension. If you use a firewall that drops
-unsolicited input, trust the `net-merge` interface (e.g. `firewall-cmd --zone=trusted
---add-interface=net-merge`).
+**Mac with an Android phone** (needs the app **TetherKit**)
 
-## How to use
+macOS cannot use Android USB tethering by itself. The app **TetherKit** adds that support.
+1. Install and open TetherKit.
+2. Plug the phone in and turn on *USB tethering* in the phone's settings.
+3. Click **Apply** in TetherKit. net-merge adds the new network in a few seconds.
 
-On Linux and macOS, start it with `net-merge tray` (or from your autostart); there is no admin prompt when
-the capability (Linux) or `net-merge install` (macOS) is set up. The rest is the same.
+> **Start net-merge first, then connect the Android phone.** macOS drops the TetherKit connection each
+> time net-merge starts, quits, or is paused and resumed. If the phone link disappears, click **Apply**
+> in TetherKit again. The iPhone is not affected.
 
-1. Start **net-merge** from the Start menu and approve the admin prompt. A tray icon appears (if you
-   don't see it, it is behind the `^` arrow next to the clock; drag it onto the taskbar).
-2. Connect more links: plug in your phone with USB tethering on, join a second Wi-Fi, plug in Ethernet.
-   They are picked up automatically.
-3. Use the tray icon:
-   - **green** = merging, **grey** = paused
-   - **hover** shows each adapter's speed and the total
-   - **right-click** (or click) opens the menu: full adapter names with their speeds, how many connections
-     net-merge has put on each adapter, the IPv6 option, *Pause merging* / *Start merging*, and *Quit*
-4. To start it at sign-in, tick *Start net-merge when I sign in* in the installer, or run
-   `net-merge autostart on` (on Linux this writes an XDG autostart entry; on NixOS prefer
-   `programs.net-merge.autostart`).
+A phone uses its mobile data, so part of your traffic goes through it while net-merge runs. Quit
+net-merge when you do not want that.
+
+## Use it
+
+1. Start net-merge. A tray icon appears (menu bar on Mac).
+2. The icon is **green** when it is merging and **grey** when it is paused.
+3. **Hover** the icon to see the speed of each connection and the total.
+4. **Right-click** the icon (on Mac, click it) to open the menu. It shows each connection's speed, how
+   many connections net-merge gave it, and the buttons *Pause merging* / *Start merging* and *Quit*.
+5. To start it at sign-in: tick the box in the Windows installer, or run `net-merge autostart on`.
 
 Tips:
-- It helps most when an app opens many connections at once: Steam, browsers, cloud uploads, download
-  managers that split files (IDM). One single connection always stays on one adapter.
-- Torrent clients already use every adapter on their own. Leave qBittorrent's network interface on
-  *Any interface*; its speed still shows in the tray.
-- *Use all adapters (IPv6 only if every adapter has it)*: leave it ticked. If only some links have IPv6,
-  apps that prefer IPv6 would otherwise pile onto those links. Untick it only if you need an IPv6-only site.
-- `net-merge list` shows which adapters are used and why others are skipped; `net-merge status` shows
-  live per-adapter numbers.
+- Torrent clients already use every connection. Leave qBittorrent's network interface on *Any interface*.
+- Leave *Use all adapters (IPv6 only if every adapter has it)* ticked. Untick it only if you must reach a
+  site that only has IPv6.
+- `net-merge list` shows which connections are used and why others are skipped. `net-merge status`
+  shows live numbers.
 
-## Command line
+## Commands
 
 ```
+net-merge tray            tray icon (the normal way to run it)
 net-merge on | off        start / pause merging in the running tray
-net-merge quit            pause and exit the tray
-net-merge status | list   live numbers / which adapters are used and why
+net-merge quit            pause and close the tray
+net-merge status | list   live numbers / which connections are used
 net-merge autostart on|off|status
-net-merge tray            tray app (asks for admin once)
-net-merge run             system-wide in a console window
-net-merge socks           plain SOCKS5 proxy on 127.0.0.1:1080 (no admin, per-app)
+net-merge socks           plain SOCKS5 proxy on 127.0.0.1:1080 (no admin, per app)
 net-merge cleanup         remove leftover routes after a crash
-net-merge install         macOS only: sudo net-merge install, lets the tray start without a password
-net-merge version
+net-merge install         macOS only: `sudo net-merge install` (see above)
 ```
 
-Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters), `-weight "Name=3"`
-(fixed weight instead of measured), `-ipv6 auto|on|off`, `-mtu 9000` (virtual adapter MTU, see below),
-`-pprof 127.0.0.1:6060` (Go profiler, loopback only), `-log file`.
+More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
-## How it works
+## Good to know
 
-- ON creates a virtual adapter `net-merge` (Wintun on Windows, a kernel TUN on Linux, a utun on macOS) and two `/1` routes per IP family that beat the default route
-  without touching it. OFF deletes them. If the process dies the adapter and routes die with it, so a
-  crash can't leave the machine without internet.
-- Flows entering the TUN are terminated in a userland TCP/IP stack (tun2socks/gVisor) and re-dialed from
-  a chosen adapter: the socket is bound to that adapter's source IP and forced out of it with
-  `IP_UNICAST_IF` (Windows), `SO_BINDTOIFINDEX` (Linux) or `IP_BOUND_IF` (macOS, plus a scoped default route per adapter so the bound lookup still works), so it can never loop back into the TUN.
-- The virtual adapter runs at MTU 9000 (both the OS and the userland stack). Its traffic never leaves
-  the machine, so the links' 1500 doesn't apply, and bigger packets cost far less CPU: measured about
-  3x less CPU per Mbit/s than at 1500 (0.18 vs 0.54 cores per 100 Mbit/s). `-mtu` changes it.
-- Adapters are detected automatically and re-scanned every 3 s. Only real hardware with a default route
-  is used (on Linux: interfaces backed by a device in sysfs, with a default route in any routing table; on macOS: `enN` interfaces, and TetherKit's `fethN`, with a default route): tunnels, VPNs (Tailscale, WireGuard, ...), virtual switches and LAN-only adapters are skipped
-  (`net-merge list` shows why).
-- Each adapter and each address family is probed for real internet access. A tether with no data or a
-  captive-portal Wi-Fi gets no flows; a recovered link rejoins within seconds.
-- Flows go to the adapter with the lowest (active flows + 1) / weight. Weights follow measured
-  throughput, separately for IPv4 and IPv6 (a link can be fast over native IPv6 and slow over translated
-  IPv4).
-- IPv6 (`-ipv6 auto|on|off`, tray checkbox): IPv6 flows can only leave through adapters that have IPv6, and
-  apps that prefer IPv6 (browsers, OBS, curl) would funnel everything onto them. In `auto` mode IPv6 is
-  balanced only when every adapter has working IPv6; otherwise new IPv6 connections are refused at the SYN
-  (UDP gets ICMP unreachable), apps fall back to IPv4 instantly, and IPv4 spreads over all adapters.
-  Cost: IPv6-only hosts are unreachable while the adapters differ (untick the tray box or use `-ipv6 on`).
+- Needs admin (Windows), `CAP_NET_ADMIN` (Linux) or `sudo net-merge install` once (macOS).
+- Some sites tie your login to one IP. net-merge may use a different IP for each connection, so such a
+  site can ask you to log in again.
+- If your connections differ in IPv6 support, sites that only have IPv6 are not reachable while the box
+  above is ticked.
 
-## Limits
+## More
 
-- One connection = one adapter. A single big download won't speed up; many connections will.
-- With adapters that differ in IPv6 support, IPv6-only hosts are unreachable in `auto` mode (see above).
-- Sites that tie a login to one IP may see a different IP per connection and ask you to re-verify.
-- Needs admin (for the TUN). Windows 10/11 x64, macOS (Apple Silicon or Intel) or Linux (x86_64, aarch64) with root or
-  `CAP_NET_ADMIN`.
-
-## Build
-
-Needs Go (see `go.mod`) and, for the Windows installer, [Inno Setup 6](https://jrsoftware.org/isinfo.php).
-
-```
-go test ./...                       # uses loopback aliases as fake adapters; no second link needed
-go build -o net-merge ./cmd/net-merge   # Linux, macOS (macOS needs the Xcode command line tools)
-nix build                           # Linux, with Nix: result/bin/net-merge
-scripts\build.ps1 -Version 0.1.0    # dist\: net-merge.exe, net-merge-tray.exe, installer, portable zip
-```
-
-`wintun.dll` is not in the repo: `scripts\fetch-wintun.ps1` downloads it and verifies its SHA-256 and its
-WireGuard LLC signature. To run from source, put it next to the exe:
-
-```
-go build -o net-merge.exe .\cmd\net-merge
-scripts\fetch-wintun.ps1 -OutDir .
-```
-
-Releases are built by GitHub Actions when a `vX.Y.Z` tag is pushed (`.github/workflows/release.yml`).
-Add the version's section to `CHANGELOG.md` first: it becomes the release notes, and the release fails
-without it (`scripts\release-notes.ps1 -Version X.Y.Z` previews them).
-Layout: `cmd/net-merge` is the command line; `internal/engine` the scheduler, balancer, probes and
-SOCKS5 front-end; `internal/nics` adapter discovery, counters and egress pinning; `internal/tun` the
-system-wide front-end; `internal/tray` the tray icon; `internal/platform` privileges, single instance
-and autostart. OS-specific code lives in `_windows.go` / `_linux.go` / `_darwin.go` files next to the shared code. The
-Nix package and NixOS module are in `nix/`; after changing Go dependencies, update `vendorHash` in
-`nix/package.nix` (`nix build` prints the new one).
-
-`go test -run xxx -bench Relay ./...` measures the relay data path (about 3 GB/s over loopback).
-
-Don't benchmark against speed.cloudflare.com repeatedly: it rate-limits the IP (HTTP 429) after a few
-large downloads and the numbers become meaningless.
-
-## License
-
-MIT, see `LICENSE`. Third-party components are listed in `THIRD-PARTY-NOTICES.md`.
+- What changed in each version: [CHANGELOG.md](CHANGELOG.md)
+- How it works, building from source, tests: [docs/DEVELOPING.md](docs/DEVELOPING.md)
+- License: MIT, see `LICENSE`. Third-party parts: `THIRD-PARTY-NOTICES.md`.
