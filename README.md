@@ -52,6 +52,7 @@ Works on Apple Silicon and Intel Macs. Download `net-merge-x.y.z-macos-universal
 [releases page](../../releases), unpack it, and run these once:
 
 ```
+tar xzf net-merge-*-macos-universal.tar.gz
 xattr -d com.apple.quarantine net-merge   # only if macOS refuses to open it (it is not notarized yet)
 sudo ./net-merge install                  # copies it to /usr/local/bin and lets you start the tray without a password
 net-merge tray                            # a green/grey icon appears in the menu bar
@@ -112,14 +113,18 @@ To try it without installing: `sudo nix run github:rohit267/net-merge -- run`.
 
 ### Other Linux distributions
 
-Build it (see [Build](#build)), put it on your `PATH`, and give it the capability once so it runs
-without root:
+Download `net-merge-x.y.z-linux-x86_64.tar.gz` (or `-linux-aarch64.tar.gz` for ARM) from the
+[releases page](../../releases), unpack it, put it on your `PATH`, and give it the capability once so it
+runs without root:
 
 ```
-go build -o net-merge ./cmd/net-merge
+tar xzf net-merge-*-linux-*.tar.gz
 sudo install -m 755 net-merge /usr/local/bin/
 sudo setcap cap_net_admin,cap_net_raw+ep /usr/local/bin/net-merge
+net-merge tray
 ```
+
+To build it yourself instead, see [Build](#build) (`go build -o net-merge ./cmd/net-merge`).
 
 Without the capability, `net-merge run` asks for your password through `sudo` (or `pkexec` without a
 terminal); the tray can't run as root, because its icon lives on your desktop session's D-Bus. The
