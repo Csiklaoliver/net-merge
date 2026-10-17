@@ -97,12 +97,13 @@ func (t *Tun) IsOn() bool {
 	return t.on
 }
 
-func (t *Tun) On() (err error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.on {
-		return nil
-	}
+// keepDevice makes Off pause instead of tear down: only the capture routes go, the adapter stays.
+// macOS sets it, because there taking a utun away or adding one makes the system drop other
+// virtual links such as a TetherKit phone, so pausing and resuming must never touch the adapter.
+var keepDevice bool
+
+// open creates the adapter and the userland stack, without capturing anything yet.
+func (t *Tun) open() error {
 	// "error", not "warn": tun2socks warns once per dropped UDP packet ("symmetric NAT ... drop
 	// packet"), which a torrent client triggers continuously.
 	if lvl, e := tlog.ParseLevel("error"); e == nil {
@@ -126,6 +127,31 @@ func (t *Tun) On() (err error) {
 	}
 	installForwarders(stk, t.B.V6Allowed)
 	t.dev, t.stk = dev, stk
+	return nil
+}
+
+// Warm creates the adapter ahead of time, so a later On only adds routes. Only platforms with
+// keepDevice need it; elsewhere it does nothing.
+func (t *Tun) Warm() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !keepDevice || t.dev != nil {
+		return nil
+	}
+	return t.open()
+}
+
+func (t *Tun) On() (err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.on {
+		return nil
+	}
+	if t.dev == nil {
+		if err = t.open(); err != nil {
+			return err
+		}
+	}
 	defer func() {
 		if err != nil {
 			t.teardown()
@@ -133,14 +159,30 @@ func (t *Tun) On() (err error) {
 	}()
 	tunnel.T().SetProxy(tunProxy{t.B})
 
-	if t.idx, err = configure(dev.Name(), t.MTU); err != nil {
+	if t.idx, err = configure(t.dev.Name(), t.MTU); err != nil {
 		return err
 	}
 	t.on = true
 	return nil
 }
 
+// Off stops capturing: with keepDevice it only removes the routes, otherwise it removes the adapter.
 func (t *Tun) Off() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if keepDevice && t.dev != nil {
+		if t.idx != 0 {
+			delRoutes(t.idx) // traffic falls straight back to the normal default route
+		}
+		tunnel.T().SetProxy(&reject.Reject{})
+		t.on = false
+		return
+	}
+	t.teardown()
+}
+
+// Close removes everything, including a kept adapter. Call it when the program exits.
+func (t *Tun) Close() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.teardown()
