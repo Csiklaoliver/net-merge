@@ -1,0 +1,65 @@
+name: verify-repos
+# Installs net-merge from the real published repositories, with the commands from the README, on
+# every distribution and on both x86-64 and ARM64. Run it after a release (Actions > verify-repos >
+# Run workflow); it also runs every Monday to catch a broken key or repository.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 5 * * 1'
+
+env:
+  BASE: https://rohit267.github.io/net-merge
+  FPR: 0168C7AB77721656904811AE904F61E7F4F1C2A1
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+        distro: [ubuntu, debian, fedora, rocky, opensuse, alpine, arch]
+        include:
+          - {distro: ubuntu, image: 'ubuntu:24.04', family: apt}
+          - {distro: debian, image: 'debian:stable', family: apt}
+          - {distro: fedora, image: 'fedora:latest', family: dnf}
+          - {distro: rocky, image: 'rockylinux:9', family: dnf}
+          - {distro: opensuse, image: 'opensuse/tumbleweed', family: zypper}
+          - {distro: alpine, image: 'alpine:3.22', family: apk}
+          - {distro: arch, image: 'archlinux:latest', family: pacman}
+        exclude:
+          - {os: ubuntu-24.04-arm, distro: arch} # Arch Linux has no ARM container image
+    name: ${{ matrix.distro }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install net-merge
+        run: |
+          case '${{ matrix.family }}' in
+            apt) script='
+              apt-get update -qq && apt-get install -y -qq curl ca-certificates sudo >/dev/null
+              curl -fsSL $BASE/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg >/dev/null
+              echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] $BASE/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
+              sudo apt update && sudo apt install -y net-merge' ;;
+            dnf) script='
+              curl -fsSL -o /etc/yum.repos.d/net-merge.repo $BASE/rpm/net-merge.repo
+              dnf install -y net-merge' ;;
+            zypper) script='
+              zypper --non-interactive addrepo $BASE/rpm/net-merge.repo
+              zypper --non-interactive --gpg-auto-import-keys refresh
+              zypper --non-interactive install net-merge' ;;
+            apk) script='
+              apk add --no-cache sudo wget >/dev/null
+              sudo wget -O /etc/apk/keys/net-merge.rsa.pub $BASE/apk/net-merge.rsa.pub
+              echo $BASE/apk | sudo tee -a /etc/apk/repositories
+              sudo apk add net-merge' ;;
+            pacman) script='
+              pacman-key --init
+              curl -fsSL $BASE/apt/key.asc | pacman-key --add -
+              pacman-key --lsign-key $FPR
+              printf "\n[net-merge]\nSigLevel = Required\nServer = $BASE/arch/\$arch\n" >> /etc/pacman.conf
+              pacman --disable-sandbox -Sy --noconfirm net-merge' ;;
+          esac
+          docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW -e BASE -e FPR '${{ matrix.image }}' sh -ec "
+            $script
+            net-merge version
+            command -v getcap >/dev/null && getcap /usr/bin/net-merge || true
+            test -f /usr/share/applications/io.github.rohit267.net-merge.desktop"
