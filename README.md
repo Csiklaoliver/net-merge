@@ -59,111 +59,110 @@ spread over all your links.
 
 ## Install
 
-### Windows
-
-1. Download `net-merge-setup-x.y.z.exe` from the [releases page](../../releases) and run it. It needs admin.
-2. Windows may warn you because the app is not signed yet. Click *More info*, then *Run anyway*.
-3. Open **net-merge** from the Start menu. A tray icon appears. If you do not see it, it is behind the
-   `^` arrow next to the clock.
-
-There is also a portable zip on the releases page.
-
-### macOS (Apple Silicon and Intel)
-
-1. Download `net-merge-x.y.z-macos-universal.tar.gz` from the [releases page](../../releases).
-2. Open Terminal in that folder and run:
+**macOS and Linux**: paste this into a terminal.
 
 ```
-tar xzf net-merge-*-macos-universal.tar.gz
-xattr -d com.apple.quarantine net-merge     # only if macOS says it can't open it
-sudo ./net-merge install                    # once: lets the tray start without a password
-net-merge tray                              # a green/grey icon appears in the menu bar
+curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh
 ```
 
-3. Optional: `net-merge autostart on` to start it when you log in.
+**Windows**: paste this into PowerShell.
 
-With Homebrew instead: `brew install rohit267/tap/net-merge`, then `sudo "$(brew --prefix)/bin/net-merge" install`
-and `net-merge tray` (run `install` again after each `brew upgrade net-merge`).
+```
+irm https://raw.githubusercontent.com/rohit267/net-merge/main/install.ps1 | iex
+```
 
-`install` adds one small rule so that only `net-merge tray` can run as root without a password. To remove
-it all: `net-merge autostart off` and `sudo net-merge uninstall`.
+That's it: net-merge is installed and its icon appears in the menu bar or tray. On Linux the script
+uses your package manager (apt, dnf, zypper, apk or pacman) and on macOS Homebrew when you have it, so
+net-merge updates with the rest of your system. To start it at sign-in: `net-merge autostart on`.
 
-### Linux
+<details>
+<summary><strong>Rather type the commands yourself?</strong> One block per system, each ready to paste.</summary>
+<br>
 
-net-merge is packaged for the main distributions and for these CPUs: x86-64, ARM64, ARMv7, ARMv6
-(Raspberry Pi), x86 32-bit, RISC-V, PowerPC (ppc64le), s390x and LoongArch. Pick yours. Each way keeps
-net-merge up to date through your normal package manager.
+**Homebrew** (macOS):
+
+```
+brew install rohit267/tap/net-merge && sudo "$(brew --prefix)/bin/net-merge" install && net-merge tray
+```
+
+**macOS without Homebrew**:
+
+```
+curl -fsSL https://github.com/rohit267/net-merge/releases/latest/download/net-merge-macos-universal.tar.gz | tar -xz -C /tmp net-merge && sudo /tmp/net-merge install && net-merge tray
+```
 
 **Debian, Ubuntu, Linux Mint, Pop!_OS, Raspberry Pi OS** (apt):
 
 ```
 curl -fsSL https://rohit267.github.io/net-merge/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg >/dev/null
 echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] https://rohit267.github.io/net-merge/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
-sudo apt update && sudo apt install net-merge
+sudo apt update && sudo apt install -y net-merge
 ```
 
 **Fedora, RHEL, Rocky, Alma** (dnf):
 
 ```
-sudo curl -fsSL -o /etc/yum.repos.d/net-merge.repo https://rohit267.github.io/net-merge/rpm/net-merge.repo
-sudo dnf install net-merge
+sudo curl -fsSL -o /etc/yum.repos.d/net-merge.repo https://rohit267.github.io/net-merge/rpm/net-merge.repo && sudo dnf install -y net-merge
 ```
 
 **openSUSE** (zypper):
 
 ```
-sudo zypper addrepo https://rohit267.github.io/net-merge/rpm/net-merge.repo
-sudo zypper --gpg-auto-import-keys refresh
-sudo zypper install net-merge
+sudo zypper addrepo https://rohit267.github.io/net-merge/rpm/net-merge.repo && sudo zypper --gpg-auto-import-keys install -y net-merge
 ```
 
 **Arch, Manjaro, EndeavourOS** (pacman):
 
 ```
-curl -fsSL https://rohit267.github.io/net-merge/apt/key.asc | sudo pacman-key --add -
-sudo pacman-key --lsign-key 0168C7AB77721656904811AE904F61E7F4F1C2A1
+curl -fsSL https://rohit267.github.io/net-merge/apt/key.asc | sudo pacman-key --add - && sudo pacman-key --lsign-key 0168C7AB77721656904811AE904F61E7F4F1C2A1
 printf '\n[net-merge]\nSigLevel = Required\nServer = https://rohit267.github.io/net-merge/arch/$arch\n' | sudo tee -a /etc/pacman.conf
-sudo pacman -Sy net-merge
+sudo pacman -Sy --noconfirm net-merge
 ```
 
 **Alpine** (apk):
 
 ```
 sudo wget -O /etc/apk/keys/net-merge.rsa.pub https://rohit267.github.io/net-merge/apk/net-merge.rsa.pub
-echo https://rohit267.github.io/net-merge/apk | sudo tee -a /etc/apk/repositories
-sudo apk add net-merge
+echo https://rohit267.github.io/net-merge/apk | sudo tee -a /etc/apk/repositories && sudo apk add net-merge
 ```
 
-**Homebrew** (Linux and macOS): `brew install rohit267/tap/net-merge`, then, once and again after each
-`brew upgrade net-merge`: `sudo setcap cap_net_admin,cap_net_raw+ep "$(readlink -f "$(command -v net-merge)")"`.
-
-Then open **net-merge** from your app menu, or run `net-merge tray`. The packages give net-merge the
-network rights it needs, so there is no password prompt. You can also download the `.deb`, `.rpm`, `.apk`
-or `.pkg.tar.zst` for your CPU from the [releases page](../../releases) and install it by hand
-(`sudo apt install ./net-merge_*.deb`, `sudo dnf install ./net-merge-*.rpm`, `sudo apk add --allow-untrusted ./net-merge_*.apk`,
-`sudo pacman -U ./net-merge-*.pkg.tar.zst`).
-
-**Any other distribution** (tarball):
-
-1. Download the `net-merge-x.y.z-linux-<cpu>.tar.gz` for your CPU from the [releases page](../../releases):
-   `x86_64`, `aarch64`, `armv7`, `armv6`, `i686`, `riscv64`, `ppc64le`, `s390x` or `loongarch64`.
-2. Run:
+**Homebrew** (Linux):
 
 ```
-tar xzf net-merge-*-linux-*.tar.gz
-sudo install -m 755 net-merge /usr/local/bin/
-sudo setcap cap_net_admin,cap_net_raw+ep /usr/local/bin/net-merge
-net-merge tray
+brew install rohit267/tap/net-merge && sudo setcap cap_net_admin,cap_net_raw+ep "$(readlink -f "$(brew --prefix)/bin/net-merge")"
 ```
 
-The `setcap` line lets net-merge work without root. The tray icon needs a desktop that supports
-StatusNotifierItem: KDE, XFCE, Cinnamon, LXQt, Budgie, or GNOME with the *AppIndicator and
-KStatusNotifierItem Support* extension (Ubuntu already has it). If your firewall blocks unknown traffic,
-trust the `net-merge` interface (for example `firewall-cmd --zone=trusted --add-interface=net-merge`).
+**Any other Linux** (any CPU):
 
-The apt, dnf, zypper and Arch repositories are signed with the key in
-[`packaging/apt-signing-key.asc`](packaging/apt-signing-key.asc), fingerprint
-`0168 C7AB 7772 1656 9048 11AE 904F 61E7 F4F1 C2A1`.
+```
+curl -fsSL https://github.com/rohit267/net-merge/releases/latest/download/net-merge-linux-$(uname -m).tar.gz | tar -xz -C /tmp net-merge && sudo install -m 755 /tmp/net-merge /usr/local/bin/ && sudo setcap cap_net_admin,cap_net_raw+ep /usr/local/bin/net-merge
+```
+
+**Windows by hand**: download [net-merge-setup.exe](https://github.com/rohit267/net-merge/releases/latest/download/net-merge-setup.exe)
+and run it. Windows may warn because the app is not signed yet: click *More info*, then *Run anyway*.
+There is also a [portable zip](https://github.com/rohit267/net-merge/releases/latest/download/net-merge-portable.zip).
+
+Then start it with `net-merge tray` (Linux, macOS) or from the Start menu (Windows).
+</details>
+
+<details>
+<summary><strong>Good to know</strong></summary>
+<br>
+
+- **Which CPUs:** x86-64, ARM64 and Apple Silicon, ARMv7, ARMv6 (Raspberry Pi), x86 32-bit, RISC-V,
+  PowerPC (ppc64le), s390x and LoongArch.
+- **No password prompts:** the Linux packages give net-merge the network rights it needs (`setcap`), and on
+  macOS `net-merge install` adds one rule so that only `net-merge tray` can run as root without a password.
+- **Linux tray icon:** needs a desktop with StatusNotifierItem support: KDE, XFCE, Cinnamon, LXQt, Budgie,
+  or GNOME with the *AppIndicator and KStatusNotifierItem Support* extension (Ubuntu already has it).
+- **Firewall:** if it blocks unknown traffic, trust the `net-merge` interface
+  (for example `firewall-cmd --zone=trusted --add-interface=net-merge`).
+- **Signed repositories:** apt, dnf, zypper and pacman use the key in
+  [`packaging/apt-signing-key.asc`](packaging/apt-signing-key.asc), fingerprint
+  `0168 C7AB 7772 1656 9048 11AE 904F 61E7 F4F1 C2A1`.
+- **Uninstall:** your package manager (`sudo apt remove net-merge`, `brew uninstall net-merge`, ...) or
+  Windows' *Installed apps*. On macOS also `net-merge autostart off` and `sudo net-merge uninstall`.
+</details>
 
 ### NixOS
 
