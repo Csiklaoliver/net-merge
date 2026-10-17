@@ -15,6 +15,13 @@ URLS=(https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
       https://archive.ubuntu.com/ubuntu/dists/noble/Contents-amd64.gz
       https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb)
 REAL=$(ip -4 route show default | awk '{print $5; exit}')
+# Resolved before net-merge starts: the download check is about balancing TCP, and name lookups
+# through the test's second uplink (DNS is checked separately below) must not decide it.
+declare -A IP
+for u in "${URLS[@]}"; do
+    h=${u#https://}; h=${h%%/*}
+    [ -n "${IP[$h]:-}" ] || IP[$h]=$(getent ahostsv4 "$h" | awk 'NR==1{print $1}')
+done
 fails=0
 pass() { echo "PASS  $*"; }
 fail() { echo "FAIL  $*"; fails=$((fails + 1)); }
@@ -90,16 +97,18 @@ fi
 echo "== 12 parallel downloads: both uplinks must carry traffic"
 for url in "${URLS[@]}"; do
     r0=$(nic_bytes "$REAL"); v0=$(nic_bytes nmup-h)
+    host=${url#https://}; host=${host%%/*}
     pids=()
     for _ in $(seq 1 12); do
-        curl -4 -s --max-time 40 -r 0-9999999 -o /dev/null "$url" &
+        curl -4 -s --max-time 40 --resolve "$host:443:${IP[$host]}" -r 0-9999999 -o /dev/null "$url" &
         pids+=($!)
     done
-    wait "${pids[@]}"
+    codes=""
+    for p in "${pids[@]}"; do wait "$p"; codes+=" $?"; done
     sleep 2 # one status tick
     r1=$(nic_bytes "$REAL"); v1=$(nic_bytes nmup-h)
     real_mb=$(((r1 - r0) / 1000000)); veth_mb=$(((v1 - v0) / 1000000))
-    echo "   $url: via $REAL: ${real_mb} MB, via nmup-h: ${veth_mb} MB"
+    echo "   $url: via $REAL: ${real_mb} MB, via nmup-h: ${veth_mb} MB (curl exit codes:$codes)"
     [ $((real_mb + veth_mb)) -ge 10 ] && break # something came through; only then is a bad split a real failure
 done
 [ "$real_mb" -ge 10 ] && [ "$veth_mb" -ge 10 ] &&
