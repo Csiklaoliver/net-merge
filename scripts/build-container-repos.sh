@@ -25,7 +25,7 @@ docker run --rm -e OWNER="$owner" \
     alpine:3.22 sh -ec '
         apk add --no-cache abuild >/dev/null
         for f in /pkgs/*.apk; do
-            arch=${f##*_}; arch=${arch%.apk}
+            b=$(basename "$f" .apk); arch=${b#net-merge_*_}   # net-merge_1.2.3_x86_64 -> x86_64
             mkdir -p /site/apk/$arch
             cp "$f" /site/apk/$arch/
         done
