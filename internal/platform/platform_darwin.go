@@ -60,8 +60,20 @@ func RedirectStd(f *os.File) {
 	unix.Dup2(int(f.Fd()), 2)
 }
 
-// InstalledExe is where `net-merge install` puts the root-owned copy that sudoers allows.
-const InstalledExe = "/usr/local/bin/net-merge"
+// Where `net-merge install` puts the root-owned copy that sudoers allows: /usr/local/bin when only
+// root can write there, else /opt/net-merge/bin (Intel Macs, where Homebrew owns /usr/local/bin).
+const (
+	exePreferred = "/usr/local/bin/net-merge"
+	exeFallback  = "/opt/net-merge/bin/net-merge"
+)
+
+// InstalledExe is the root-owned copy `net-merge install` made.
+func InstalledExe() string {
+	if _, err := os.Stat(exeFallback); err == nil {
+		return exeFallback
+	}
+	return exePreferred
+}
 
 // RelaunchElevated replaces this process with itself run as root: sudo in a terminal, the
 // administrator password dialog otherwise. It only returns on failure.
@@ -90,8 +102,8 @@ func RelaunchElevated(args []string, hidden bool) error {
 // applies when the tray was started without flags.
 func RelaunchTray(args []string, hidden bool) error {
 	if len(args) == 1 && args[0] == "tray" {
-		if exec.Command("/usr/bin/sudo", "-n", "-l", InstalledExe, "tray").Run() == nil {
-			return syscall.Exec("/usr/bin/sudo", []string{"sudo", "-n", InstalledExe, "tray"}, os.Environ())
+		if exe := InstalledExe(); exec.Command("/usr/bin/sudo", "-n", "-l", exe, "tray").Run() == nil {
+			return syscall.Exec("/usr/bin/sudo", []string{"sudo", "-n", exe, "tray"}, os.Environ())
 		}
 	}
 	return RelaunchElevated(args, hidden)

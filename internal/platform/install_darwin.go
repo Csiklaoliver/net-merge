@@ -25,23 +25,44 @@ func Install(uninstall bool) error {
 		return errors.New("run: sudo net-merge install")
 	}
 	if uninstall {
-		for _, p := range []string{sudoersPath, InstalledExe} {
+		exe := InstalledExe()
+		removeOurLink()
+		for _, p := range []string{sudoersPath, exePreferred} {
+			if p == exePreferred && !rootFile(p) {
+				continue // Homebrew's link or someone else's file, not our copy
+			}
 			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 				return err
 			}
 		}
-		fmt.Println("removed " + sudoersPath + " and " + InstalledExe + ". Turn off start at sign-in with `net-merge autostart off`.")
+		if err := os.RemoveAll(filepath.Dir(filepath.Dir(exeFallback))); err != nil {
+			return err
+		}
+		fmt.Println("removed " + sudoersPath + " and " + exe + ". Turn off start at sign-in with `net-merge autostart off`.")
 		return nil
 	}
 	user := os.Getenv("SUDO_USER")
 	if user == "" || user == "root" || !safeUser.MatchString(user) {
 		return errors.New("run it through sudo from your own account: sudo net-merge install")
 	}
-	if err := copyRootOwned(InstalledExe); err != nil {
+	exe := exePreferred
+	if rootOnly(filepath.Dir(exePreferred)) != nil {
+		exe = exeFallback
+		if err := os.MkdirAll(filepath.Dir(exeFallback), 0o755); err != nil {
+			return err
+		}
+	}
+	if err := copyRootOwned(exe); err != nil {
 		return err
 	}
+	if exe == exeFallback {
+		linkIntoPath()
+	} else {
+		removeOurLink()
+		os.RemoveAll(filepath.Dir(filepath.Dir(exeFallback))) // an older fallback copy would shadow this one
+	}
 	rule := fmt.Sprintf("# Written by `net-merge install`: %s may start the tray without a password.\n"+
-		"%s ALL=(root) NOPASSWD: %s tray, %s cleanup\n", user, user, InstalledExe, InstalledExe)
+		"%s ALL=(root) NOPASSWD: %s tray, %s cleanup\n", user, user, exe, exe)
 	tmp := sudoersPath + ".tmp"
 	if err := os.WriteFile(tmp, []byte(rule), 0o440); err != nil {
 		return err
@@ -54,14 +75,13 @@ func Install(uninstall bool) error {
 	if err := os.Rename(tmp, sudoersPath); err != nil {
 		return err
 	}
-	fmt.Printf("installed %s and %s.\nStart the tray with `net-merge tray` (no password), and at sign-in with `net-merge autostart on`.\n", InstalledExe, sudoersPath)
+	fmt.Printf("installed %s and %s.\nStart the tray with `net-merge tray` (no password), and at sign-in with `net-merge autostart on`.\n", exe, sudoersPath)
 	return nil
 }
 
-// copyRootOwned puts this binary at dst, root:wheel 0755, refusing if any directory above it
-// could be changed by a non-root user (the copy is run as root, so that would be a root hole).
-func copyRootOwned(dst string) error {
-	for d := filepath.Dir(dst); d != "/"; d = filepath.Dir(d) {
+// rootOnly fails if dir or any directory above it could be changed by a non-root user.
+func rootOnly(dir string) error {
+	for d := dir; d != "/"; d = filepath.Dir(d) {
 		fi, err := os.Stat(d)
 		if err != nil {
 			return err
@@ -69,6 +89,47 @@ func copyRootOwned(dst string) error {
 		if st, ok := fi.Sys().(*syscall.Stat_t); !ok || st.Uid != 0 || fi.Mode().Perm()&0o022 != 0 {
 			return fmt.Errorf("%s is writable by non-root users; refusing to install a root-run binary there", d)
 		}
+	}
+	return nil
+}
+
+// rootFile reports whether p is a regular file owned by root: a copy `net-merge install` made.
+func rootFile(p string) bool {
+	fi, err := os.Lstat(p)
+	if err != nil || !fi.Mode().IsRegular() {
+		return false
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	return ok && st.Uid == 0
+}
+
+// linkIntoPath makes `net-merge` in /usr/local/bin point at the fallback copy, unless something
+// else (Homebrew's link) is there already. It replaces an old root-owned copy from an earlier install.
+func linkIntoPath() {
+	if fi, err := os.Lstat(exePreferred); err == nil {
+		if target, _ := os.Readlink(exePreferred); fi.Mode()&os.ModeSymlink != 0 && target == exeFallback {
+			return
+		}
+		if !rootFile(exePreferred) {
+			return
+		}
+		os.Remove(exePreferred)
+	}
+	os.Symlink(exeFallback, exePreferred) // best effort: the tray finds the copy without it
+}
+
+// removeOurLink removes the /usr/local/bin link linkIntoPath made.
+func removeOurLink() {
+	if target, err := os.Readlink(exePreferred); err == nil && target == exeFallback {
+		os.Remove(exePreferred)
+	}
+}
+
+// copyRootOwned puts this binary at dst, root:wheel 0755, refusing if any directory above it
+// could be changed by a non-root user (the copy is run as root, so that would be a root hole).
+func copyRootOwned(dst string) error {
+	if err := rootOnly(filepath.Dir(dst)); err != nil {
+		return err
 	}
 	src, err := os.Executable()
 	if err != nil {

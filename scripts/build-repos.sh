@@ -67,6 +67,9 @@ cat > "$OUT/index.html" <<HTML
 <h1>net-merge packages</h1>
 <p>Use all your internet connections at once. <a href="https://github.com/rohit267/net-merge">Project on GitHub</a>.
 Signing key fingerprint: <code>$KEY</code>.</p>
+<h2>Any Linux or macOS: one line</h2>
+<pre>curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh</pre>
+<p>It uses your package manager when it can. Or set it up by hand:</p>
 <h2>Debian, Ubuntu, Mint, Pop!_OS, Raspberry Pi OS</h2>
 <pre>curl -fsSL $BASE/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg &gt;/dev/null
 echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] $BASE/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list

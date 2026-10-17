@@ -65,6 +65,20 @@ sleep 1
 sudo "$BIN" cleanup >/dev/null
 [ "$(scoped_defaults)" = 0 ] && pass "cleanup removed the leftover scoped defaults" || fail "scoped defaults left after cleanup"
 
+# The runner's /usr/local/bin is writable by its user, like an Intel Mac with Homebrew, so this takes
+# the /opt/net-merge/bin path.
+echo "== install: a root-owned copy and the passwordless rule, then uninstall"
+if sudo "$BIN" install; then
+    exe=$(readlink -f /usr/local/bin/net-merge)
+    sudo -n -l "$exe" tray >/dev/null && pass "passwordless rule for $exe tray" || fail "no passwordless rule for $exe tray"
+    [ "$(stat -f %u "$exe")" = 0 ] && pass "the installed copy is owned by root" || fail "the installed copy is not owned by root"
+    sudo "$BIN" uninstall >/dev/null
+    [ ! -e /etc/sudoers.d/net-merge ] && [ ! -e /opt/net-merge ] && [ ! -L /usr/local/bin/net-merge ] &&
+        pass "uninstall removed the rule and the copy" || fail "uninstall left files behind"
+else
+    fail "sudo net-merge install failed"
+fi
+
 echo
 [ "$fails" -eq 0 ] && echo "ALL CHECKS PASSED" || echo "$fails CHECK(S) FAILED"
 exit "$fails"

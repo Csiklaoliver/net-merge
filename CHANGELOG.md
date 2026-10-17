@@ -5,6 +5,20 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Added
+- **One-line install.** `curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh` on
+  macOS and Linux (it uses Homebrew, apt, dnf, zypper, apk or pacman when it can, the release tarball
+  otherwise, and starts the tray), and `irm https://raw.githubusercontent.com/rohit267/net-merge/main/install.ps1 | iex`
+  in PowerShell on Windows.
+- Releases also carry the downloads under names without the version (`net-merge-setup.exe`,
+  `net-merge-macos-universal.tar.gz`, `net-merge-linux-$(uname -m).tar.gz`), so
+  `releases/latest/download/...` links always give the newest one.
+
+### Fixed
+- `sudo net-merge install` refused on Macs where `/usr/local/bin` is writable by your user (Intel Macs
+  with Homebrew). It now puts its root-owned copy in `/opt/net-merge/bin` there, and links `net-merge` into
+  `/usr/local/bin`.
+
 ## [0.3.0] - 2026-10-17
 
 ### Added

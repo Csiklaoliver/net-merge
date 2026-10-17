@@ -52,7 +52,7 @@ func Autostart(action string) error {
 		fmt.Println("autostart is OFF.")
 		return nil
 	}
-	if exec.Command("/usr/bin/sudo", "-n", "-l", InstalledExe, "tray").Run() != nil {
+	if exec.Command("/usr/bin/sudo", "-n", "-l", InstalledExe(), "tray").Run() != nil {
 		return errors.New("the tray can't start at sign-in without the passwordless rule; run once: sudo net-merge install")
 	}
 	home, _ := os.UserHomeDir()
@@ -60,7 +60,7 @@ func Autostart(action string) error {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>` + agentLabel + `</string>
-<key>ProgramArguments</key><array><string>/usr/bin/sudo</string><string>-n</string><string>` + InstalledExe + `</string><string>tray</string></array>
+<key>ProgramArguments</key><array><string>/usr/bin/sudo</string><string>-n</string><string>` + InstalledExe() + `</string><string>tray</string></array>
 <key>RunAtLoad</key><true/>
 <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
 <key>ThrottleInterval</key><integer>30</integer>
