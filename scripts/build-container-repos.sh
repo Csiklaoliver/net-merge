@@ -30,7 +30,7 @@ docker run --rm -e OWNER="$owner" \
             cp "$f" /site/apk/$arch/
         done
         for d in /site/apk/*/; do
-            (cd "$d" && apk index -o APKINDEX.tar.gz *.apk && abuild-sign -k /key/net-merge.rsa APKINDEX.tar.gz)
+            (cd "$d" && apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && abuild-sign -k /key/net-merge.rsa APKINDEX.tar.gz)
         done
         cp /key/net-merge.rsa.pub /site/apk/net-merge.rsa.pub
         chown -R "$OWNER" /site/apk'
