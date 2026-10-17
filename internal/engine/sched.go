@@ -180,11 +180,28 @@ const minMeasuredPeak = 50_000
 // equal, which spreads load so each one gets measured. The peak holds while a NIC is idle and
 // only decays when it is in use but underperforming, so capacity is remembered across pauses.
 func (s *Scheduler) Tick(dt time.Duration) {
+	// nics.Octets calls into the OS, so read the counters on a snapshot of the slots without s.mu
+	// (it would stall AcquireFor and Update) and take the lock only to store the results.
+	s.mu.Lock()
+	slots := append([]*Slot(nil), s.slots...)
+	s.mu.Unlock()
+
+	type sample struct {
+		in, out uint64
+		ok      bool
+	}
+
+	samples := make([]sample, len(slots))
+	for i, sl := range slots {
+		in, out, ok := nics.Octets(sl.Index)
+		samples[i] = sample{in, out, ok}
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sec := dt.Seconds()
-	for _, sl := range s.slots {
-		in, out, ok := nics.Octets(sl.Index)
+	for i, sl := range slots {
+		in, out, ok := samples[i].in, samples[i].out, samples[i].ok
 		if !sl.present || !ok {
 			sl.linkRateIn, sl.linkRateOut, sl.linkPrimed = 0, 0, false
 			continue

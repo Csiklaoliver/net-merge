@@ -5,6 +5,9 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Changed
+- New connections no longer wait while the once-a-second adapter speed reading runs (thanks @b0r1ssh).
+
 ## [0.2.0] - 2026-10-16
 
 ### Added
