@@ -31,6 +31,8 @@ cleanup() {
     sudo ip netns del nmup 2>/dev/null
     sudo ip link del nmup-h 2>/dev/null
     sudo ip link del nmgw-h 2>/dev/null
+    sudo ip rule del iif nmgw-h lookup 100 2>/dev/null
+    sudo ip route flush table 100 2>/dev/null
     sudo iptables -t nat -D POSTROUTING -s 10.88.0.0/24 -o "$REAL" -j MASQUERADE 2>/dev/null
     sudo iptables -D FORWARD -i nmgw-h -j ACCEPT 2>/dev/null
     sudo iptables -D FORWARD -o nmgw-h -j ACCEPT 2>/dev/null
@@ -76,6 +78,11 @@ sudo iptables -t nat -A POSTROUTING -s 10.88.0.0/24 -o "$REAL" -j MASQUERADE
 sudo iptables -I FORWARD -i nmgw-h -j ACCEPT
 sudo iptables -I FORWARD -o nmgw-h -j ACCEPT
 sudo ip route add default via 10.77.0.2 dev nmup-h metric 900
+# What the namespace sends out through the host must leave through the real NIC. Without this it would
+# match net-merge's capture routes, re-enter the TUN and loop (thousands of flows per second).
+gw=$(ip -4 route show default dev "$REAL" | awk '{print $3; exit}')
+sudo ip route add default ${gw:+via $gw} dev "$REAL" table 100
+sudo ip rule add iif nmgw-h lookup 100 priority 90
 ip=$(curl -4 -s --max-time 10 --interface nmup-h https://api.ipify.org) &&
     pass "second uplink reaches the internet on its own (exit IP $ip)" || fail "second uplink has no internet"
 
@@ -105,15 +112,8 @@ if command -v dig >/dev/null; then
     sleep 2; echo "   before: $(nics)"
     a1=$(dns_answers 1.1.1.1); a2=$(dns_answers 8.8.8.8); a3=$(dns_answers 9.9.9.9)
     sleep 2; echo "   after:  $(nics)"
-    if [ $((a1 + a2 + a3)) -lt 36 ]; then
-        echo "   diag: UDP/53 conntrack in the second uplink's namespace and on the host"
-        sudo ip netns exec nmup grep 'udp.*dport=53' /proc/net/nf_conntrack | head -4
-        sudo grep 'udp.*dport=53' /proc/net/nf_conntrack | head -4
-        ip -s link show nmup-h | tail -4
-        "$BIN" status -state-dir "$STATE" | head -6
-    fi
     echo "   UDP DNS through net-merge: 1.1.1.1 $a1/12, 8.8.8.8 $a2/12, 9.9.9.9 $a3/12"
-    [ $((a1 + a2 + a3)) -gt 0 ] && pass "UDP DNS works through net-merge" || fail "UDP DNS through net-merge"
+    [ $((a1 + a2 + a3)) -ge 30 ] && pass "UDP DNS works through net-merge (36 queries, over both uplinks)" || fail "UDP DNS through net-merge: $((a1 + a2 + a3)) of 36 answered"
 fi
 
 echo "== 12 parallel downloads: both uplinks must carry traffic"
