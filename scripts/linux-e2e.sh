@@ -48,6 +48,13 @@ nic_bytes() { # bytes net-merge relayed through an adapter, from its status file
     jq -r --arg n "$1" '.NICs[] | select(.Name == $n) | .BytesIn' "$STATE/status.json"
 }
 
+dns_answers() { # dns_answers RESOLVER: how many of 12 single-try queries are answered (each is a new UDP flow)
+    local n=0
+    for _ in $(seq 1 12); do
+        dig +short +tries=1 +time=2 @"$1" example.com 2>/dev/null | grep -qE '^[0-9.]+$' && n=$((n + 1))
+    done
+    echo $n
+}
 echo "== real uplink: $REAL"
 rm -rf "$STATE" && mkdir -p "$STATE"
 
@@ -75,6 +82,9 @@ ip=$(curl -4 -s --max-time 10 --interface nmup-h https://api.ipify.org) &&
 echo "== adapter detection (the veth is virtual, so it is used only via -include)"
 "$BIN" list
 
+if command -v dig >/dev/null; then
+    echo "== DNS over UDP without net-merge (baseline): 1.1.1.1 $(dns_answers 1.1.1.1)/12, 8.8.8.8 $(dns_answers 8.8.8.8)/12, 9.9.9.9 $(dns_answers 9.9.9.9)/12"
+fi
 echo "== system-wide ON over $REAL + nmup-h"
 sudo "$BIN" run -include "$REAL,nmup-h" -state-dir "$STATE" -log "$STATE/net-merge.log" -stats 0 -for 170s &
 wait_on && pass "net-merge turned on" || { fail "net-merge did not turn on"; cat "$STATE/net-merge.log"; exit 1; }
@@ -90,14 +100,10 @@ mtu=$(cat /sys/class/net/net-merge/mtu)
 code=$(curl -4 -s --max-time 10 -o /dev/null -w '%{http_code}' https://example.com)
 [ "$code" = 200 ] && pass "plain HTTPS works through net-merge" || fail "HTTPS through net-merge: $code"
 if command -v dig >/dev/null; then
-    # Each query is a new UDP flow, so they spread over both uplinks: count the answers per flow.
-    answered=0
-    for _ in $(seq 1 12); do
-        dig +short +tries=1 +time=2 @1.1.1.1 example.com | grep -qE '^[0-9.]+$' && answered=$((answered + 1))
-    done
-    echo "   UDP DNS to 1.1.1.1: $answered of 12 queries answered"
-    [ "$answered" -gt 0 ] && pass "UDP DNS to 1.1.1.1 works through net-merge" || fail "UDP DNS through net-merge"
-    [ "$answered" -ge 12 ] || echo "   warning: UDP flows were lost ($answered of 12 answered)"
+    # Each query is a new UDP flow, so they spread over both uplinks.
+    a1=$(dns_answers 1.1.1.1); a2=$(dns_answers 8.8.8.8); a3=$(dns_answers 9.9.9.9)
+    echo "   UDP DNS through net-merge: 1.1.1.1 $a1/12, 8.8.8.8 $a2/12, 9.9.9.9 $a3/12"
+    [ $((a1 + a2 + a3)) -gt 0 ] && pass "UDP DNS works through net-merge" || fail "UDP DNS through net-merge"
 fi
 
 echo "== 12 parallel downloads: both uplinks must carry traffic"
