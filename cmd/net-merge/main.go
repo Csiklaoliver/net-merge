@@ -382,7 +382,7 @@ func cmdRun(args []string) {
 		}
 		break
 	}
-	t.Off()
+	t.Close()
 	state.Clear(c.stateDir)
 	logx.Printf("net-merge is OFF.\n")
 }

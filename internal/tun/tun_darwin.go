@@ -19,6 +19,7 @@ const openHint = "needs root"
 func init() {
 	openName = "utun"
 	staleHook = cleanupScoped
+	keepDevice = true
 }
 
 // configure gives the new utun its addresses and capture routes, and returns its index.

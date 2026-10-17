@@ -5,7 +5,17 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Added
+- **Pauses by itself when only one connection works, and resumes when two do.** With fewer than two
+  connections that reach the internet there is nothing to merge, so the tray pauses merging ("Paused: one
+  connection") and starts it again when a second connection works. Pausing or starting by hand always wins,
+  and it waits for things to settle first: 10 seconds with nothing moving (2 minutes if a download or
+  upload is still going) before pausing, 3 seconds before resuming, and at least 30 seconds between automatic switches.
+  Untick *Pause when there is only one connection* in the tray menu, or run `net-merge tray -auto-pause=false`.
+
 ### Changed
+- On macOS, pausing and resuming no longer removes and recreates the virtual adapter, so it no longer
+  drops a TetherKit (Android) link. Starting and quitting still do.
 - New connections no longer wait while the once-a-second adapter speed reading runs (thanks @b0r1ssh).
 
 ## [0.2.0] - 2026-10-16
