@@ -11,7 +11,7 @@ entry here before pushing a version tag.
   RISC-V, PowerPC (ppc64le), s390x and LoongArch, plus a tarball for each. They are also published as signed
   repositories on GitHub Pages, so `sudo apt install net-merge`, `sudo dnf install net-merge`,
   `sudo zypper install net-merge`, `sudo apk add net-merge` and `sudo pacman -S net-merge` work after a
-  one-time setup, and the AUR has `net-merge` and `net-merge-bin`. The packages give net-merge its network
+  one-time setup. The packages give net-merge its network
   rights themselves, and add an app-menu entry, icons and AppStream information.
 
 ## [0.2.0] - 2026-10-16

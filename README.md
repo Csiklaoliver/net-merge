@@ -117,13 +117,7 @@ sudo zypper --gpg-auto-import-keys refresh
 sudo zypper install net-merge
 ```
 
-**Arch, Manjaro, EndeavourOS** (AUR, or our own repository):
-
-```
-yay -S net-merge-bin
-```
-
-or, without the AUR:
+**Arch, Manjaro, EndeavourOS** (pacman):
 
 ```
 curl -fsSL https://rohit267.github.io/net-merge/apt/key.asc | sudo pacman-key --add -

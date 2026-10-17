@@ -120,21 +120,6 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Updates the AUR packages net-merge and net-merge-bin for Arch users. Needs the secret
-  # AUR_SSH_PRIVATE_KEY (a key added to an account on aur.archlinux.org); without it this does nothing.
-  aur:
-    needs: linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Push to the AUR
-        env:
-          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-        run: |
-          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then echo "secret AUR_SSH_PRIVATE_KEY is not set, skipping the AUR"; exit 0; fi
-          v='${{ github.ref_name }}'; v=${v#v}
-          docker run --rm -e AUR_SSH_PRIVATE_KEY -v "$PWD:/src:ro" archlinux:latest bash /src/scripts/aur.sh publish "$v"
-
   # Adds the macOS build to the release the Windows job creates.
   macos:
     needs: release

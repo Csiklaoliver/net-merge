@@ -83,7 +83,6 @@ sudo zypper install net-merge</pre>
 sudo pacman-key --lsign-key $KEY
 printf '\n[net-merge]\nSigLevel = Required\nServer = $BASE/arch/\$arch\n' | sudo tee -a /etc/pacman.conf
 sudo pacman -Sy net-merge</pre>
-<p>Or from the AUR: <code>yay -S net-merge-bin</code>.</p>
 <h2>Alpine</h2>
 <pre>sudo wget -O /etc/apk/keys/net-merge.rsa.pub $BASE/apk/net-merge.rsa.pub
 echo $BASE/apk | sudo tee -a /etc/apk/repositories

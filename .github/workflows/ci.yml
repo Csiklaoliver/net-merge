@@ -93,7 +93,7 @@ jobs:
 
   # The Linux packages for every CPU and the apt, dnf/zypper, Alpine and Arch repositories, tried for
   # real: build them, serve them on localhost, then install net-merge from them on Ubuntu (here),
-  # Debian, Fedora, Rocky, openSUSE, Alpine and Arch, and build the AUR packages.
+  # Debian, Fedora, Rocky, openSUSE, Alpine and Arch.
   packages:
     runs-on: ubuntu-latest
     steps:
@@ -180,14 +180,6 @@ jobs:
             pacman --disable-sandbox -Sy --noconfirm net-merge
             getcap /usr/bin/net-merge
             net-merge version'
-      - name: AUR packages build and run (Arch container)
-        run: |
-          mkdir -p www/releases/download/v0.0.0 www/archive
-          cp dist/*.tar.gz www/releases/download/v0.0.0/
-          git archive --prefix=net-merge-0.0.0/ HEAD | gzip > www/archive/v0.0.0.tar.gz
-          python3 -m http.server 8001 --directory www >/dev/null 2>&1 &
-          sleep 1
-          docker run --rm --network host -e URL=http://localhost:8001 -v "$PWD:/src:ro" archlinux:latest bash /src/scripts/aur.sh test 0.0.0
 
   nix:
     runs-on: ubuntu-latest
