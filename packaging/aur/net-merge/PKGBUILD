@@ -1,0 +1,30 @@
+# Maintainer: Rohit Mahto <rohit@champdev.me>
+# Builds from the release's source. scripts/aur.sh fills in pkgver and the checksum on each release.
+pkgname=net-merge
+pkgver=0.0.0
+pkgrel=1
+pkgdesc='Use all your network adapters at once: Wi-Fi, Ethernet and phone tethers'
+arch=(x86_64 aarch64 armv7h armv6h i686 riscv64 powerpc64le s390x loong64)
+url='https://github.com/rohit267/net-merge'
+license=(MIT)
+depends=(libcap)
+makedepends=(go)
+install=net-merge.install
+source=("net-merge-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=(SKIP)
+
+build() {
+  cd "net-merge-$pkgver"
+  CGO_ENABLED=0 go build -trimpath -mod=readonly -modcacherw \
+    -ldflags "-s -w -X main.version=$pkgver" -o net-merge ./cmd/net-merge
+}
+
+package() {
+  cd "net-merge-$pkgver"
+  install -Dm755 net-merge "$pkgdir/usr/bin/net-merge"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 packaging/io.github.rohit267.net-merge.desktop -t "$pkgdir/usr/share/applications"
+  install -Dm644 packaging/io.github.rohit267.net-merge.metainfo.xml -t "$pkgdir/usr/share/metainfo"
+  install -d "$pkgdir/usr/share/icons"
+  cp -r packaging/icons/hicolor "$pkgdir/usr/share/icons/"
+}

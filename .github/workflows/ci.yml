@@ -26,13 +26,46 @@ jobs:
       - name: Cross-build darwin/amd64
         if: runner.os == 'macOS'
         run: CGO_ENABLED=1 GOARCH=amd64 go build -o /dev/null ./cmd/net-merge
-      - name: Cross-build linux/arm64
-        if: runner.os == 'Linux'
-        run: GOARCH=arm64 go build -o /dev/null ./cmd/net-merge
+
+  # The tests on every other CPU Linux packages are built for: 386 runs natively on the x86-64
+  # runner, the rest under qemu user-mode emulation (s390x is big-endian, the rest little).
+  linux-arches:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {goarch: "386"}
+          - {goarch: arm, goarm: "7", qemu: qemu-arm-static}
+          - {goarch: arm, goarm: "6", qemu: qemu-arm-static}
+          - {goarch: riscv64, qemu: qemu-riscv64-static}
+          - {goarch: ppc64le, qemu: qemu-ppc64le-static}
+          - {goarch: s390x, qemu: qemu-s390x-static}
+          - {goarch: loong64, qemu: qemu-loongarch64-static}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install qemu
+        if: matrix.qemu
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Vet and test
+        env:
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: "0"
+        run: |
+          go vet ./...
+          go test -timeout 10m ${{ matrix.qemu && format('-exec {0}', matrix.qemu) || '' }} ./...
 
   # System-wide mode for real, as root: TUN, routes, balancing over two uplinks, off, kill -9.
   linux-e2e:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -58,8 +91,9 @@ jobs:
         if: always()
         run: cat /tmp/net-merge-smoke*.log 2>/dev/null || true
 
-  # The Linux packages and the apt/dnf repositories, tried for real: build them, serve them on
-  # localhost, then install net-merge from them with apt here and with dnf in a Fedora container.
+  # The Linux packages for every CPU and the apt, dnf/zypper, Alpine and Arch repositories, tried for
+  # real: build them, serve them on localhost, then install net-merge from them on Ubuntu (here),
+  # Debian, Fedora, Rocky, openSUSE, Alpine and Arch, and build the AUR packages.
   packages:
     runs-on: ubuntu-latest
     steps:
@@ -69,30 +103,30 @@ jobs:
           go-version-file: go.mod
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y apt-utils createrepo-c desktop-file-utils appstream rpm gnupg
-      - name: Build the .deb and .rpm files
+      - name: Build the packages for every CPU
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.48.0
-          mkdir dist
-          for arch in amd64 arm64; do
-            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -ldflags "-s -w -X main.version=0.0.0" -o net-merge ./cmd/net-merge
-            for p in deb rpm; do VERSION=0.0.0 ARCH=$arch "$(go env GOPATH)/bin/nfpm" package -p $p -f packaging/nfpm.yaml -t dist/; done
-            rm net-merge
-          done
-          ls -la dist
+          scripts/build-linux.sh 0.0.0 dist
+          ls dist | wc -l
       - name: Validate the desktop and AppStream files
         run: |
           desktop-file-validate packaging/io.github.rohit267.net-merge.desktop
           appstreamcli validate --no-net packaging/io.github.rohit267.net-merge.metainfo.xml
-      - name: Build signed repositories with a throwaway key
+      - name: Build signed repositories with throwaway keys
         run: |
           export GNUPGHOME=$(mktemp -d)
           gpg --batch --passphrase '' --quick-generate-key 'net-merge CI <ci@example.invalid>' rsa3072 sign never
-          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
           key=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
+          openssl genrsa -out "$RUNNER_TEMP/net-merge.rsa" 2048
+          openssl rsa -in "$RUNNER_TEMP/net-merge.rsa" -pubout -out "$RUNNER_TEMP/net-merge.rsa.pub"
           GPG_KEY_ID=$key REPO_BASE_URL=http://localhost:8000 scripts/build-repos.sh dist site
+          GPG_KEY_ID=$key APK_KEY="$RUNNER_TEMP/net-merge.rsa" scripts/build-container-repos.sh dist site
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "KEY=$key" >> "$GITHUB_ENV"
           python3 -m http.server 8000 --directory site >/dev/null 2>&1 &
           sleep 2
-      - name: apt install net-merge
+          find site \( -name '*.db' -o -name APKINDEX.tar.gz -o -name Packages -o -name repomd.xml \) | sort
+      - name: apt install net-merge (Ubuntu)
         run: |
           curl -fsS http://localhost:8000/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg >/dev/null
           echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] http://localhost:8000/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
@@ -102,13 +136,58 @@ jobs:
           net-merge version
           desktop-file-validate /usr/share/applications/io.github.rohit267.net-merge.desktop
           test -f /usr/share/icons/hicolor/256x256/apps/net-merge.png
-      - name: dnf install net-merge (Fedora)
+      - name: apt install net-merge (Debian)
         run: |
-          docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW fedora:latest bash -ec '
-            curl -fsS -o /etc/yum.repos.d/net-merge.repo http://localhost:8000/rpm/net-merge.repo
-            dnf install -y net-merge
+          docker run --rm --network host --cap-add NET_ADMIN debian:stable bash -ec '
+            apt-get update -qq && apt-get install -y -qq curl ca-certificates >/dev/null
+            curl -fsS -o /usr/share/keyrings/net-merge.gpg http://localhost:8000/apt/key.gpg
+            echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] http://localhost:8000/apt stable main" > /etc/apt/sources.list.d/net-merge.list
+            apt-get update -qq
+            apt-get install -y net-merge
+            net-merge version'
+      - name: dnf install net-merge (Fedora, Rocky)
+        run: |
+          for image in fedora:latest rockylinux:9; do
+            docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW $image bash -ec '
+              curl -fsS -o /etc/yum.repos.d/net-merge.repo http://localhost:8000/rpm/net-merge.repo
+              dnf install -y net-merge
+              rpm -q net-merge
+              net-merge version'
+          done
+      - name: zypper install net-merge (openSUSE)
+        run: |
+          docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW opensuse/tumbleweed bash -ec '
+            zypper --non-interactive addrepo http://localhost:8000/rpm/net-merge.repo
+            zypper --non-interactive --gpg-auto-import-keys refresh
+            zypper --non-interactive install net-merge
             rpm -q net-merge
             net-merge version'
+      - name: apk add net-merge (Alpine)
+        run: |
+          docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW alpine:3.22 sh -ec '
+            wget -qO /etc/apk/keys/net-merge.rsa.pub http://localhost:8000/apk/net-merge.rsa.pub
+            echo http://localhost:8000/apk >> /etc/apk/repositories
+            apk add net-merge
+            getcap /usr/bin/net-merge
+            net-merge version'
+      - name: pacman -S net-merge (Arch)
+        run: |
+          docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW -e KEY archlinux:latest bash -ec '
+            pacman-key --init
+            curl -fsS http://localhost:8000/apt/key.asc | pacman-key --add -
+            pacman-key --lsign-key "$KEY"
+            printf "\n[net-merge]\nSigLevel = Required\nServer = http://localhost:8000/arch/\$arch\n" >> /etc/pacman.conf
+            pacman --disable-sandbox -Sy --noconfirm net-merge
+            getcap /usr/bin/net-merge
+            net-merge version'
+      - name: AUR packages build and run (Arch container)
+        run: |
+          mkdir -p www/releases/download/v0.0.0 www/archive
+          cp dist/*.tar.gz www/releases/download/v0.0.0/
+          git archive --prefix=net-merge-0.0.0/ HEAD | gzip > www/archive/v0.0.0.tar.gz
+          python3 -m http.server 8001 --directory www >/dev/null 2>&1 &
+          sleep 1
+          docker run --rm --network host -e URL=http://localhost:8001 -v "$PWD:/src:ro" archlinux:latest bash /src/scripts/aur.sh test 0.0.0
 
   nix:
     runs-on: ubuntu-latest

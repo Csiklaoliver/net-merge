@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Builds a signed apt repository and a signed dnf repository from .deb/.rpm files, as a static
-# site that can be served from GitHub Pages. Needs apt-ftparchive (apt-utils), createrepo_c and
-# gpg, with the signing key already in the keyring.
+# Builds a signed apt repository and a signed dnf/zypper repository from .deb/.rpm files, as a
+# static site that can be served from GitHub Pages. Needs apt-ftparchive (apt-utils), dpkg-deb,
+# createrepo_c and gpg, with the signing key already in the keyring. The Alpine and Arch
+# repositories are added to the same site by build-container-repos.sh.
 #
 #   GPG_KEY_ID=<fingerprint> REPO_BASE_URL=https://rohit267.github.io/net-merge \
 #       scripts/build-repos.sh PKG_DIR OUT_DIR
@@ -20,7 +21,8 @@ cp "$PKGS"/*.rpm "$OUT/rpm/"
 
 # ---- apt: dists/stable/main/binary-<arch>/Packages, Release, InRelease
 cd "$OUT/apt"
-for arch in amd64 arm64; do
+archs=$(for f in pool/main/*.deb; do dpkg-deb -f "$f" Architecture; done | sort -u | tr '\n' ' ')
+for arch in $archs; do
     d=dists/stable/main/binary-$arch
     mkdir -p "$d"
     apt-ftparchive --arch "$arch" packages pool > "$d/Packages"
@@ -31,7 +33,7 @@ apt-ftparchive \
     -o APT::FTPArchive::Release::Label=net-merge \
     -o APT::FTPArchive::Release::Suite=stable \
     -o APT::FTPArchive::Release::Codename=stable \
-    -o APT::FTPArchive::Release::Architectures="amd64 arm64" \
+    -o APT::FTPArchive::Release::Architectures="$archs" \
     -o APT::FTPArchive::Release::Components=main \
     -o APT::FTPArchive::Release::Description="net-merge: use all your network adapters at once" \
     release dists/stable > dists/stable/Release
@@ -63,14 +65,30 @@ cat > "$OUT/index.html" <<HTML
 <title>net-merge packages</title>
 <style>body{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem}pre{background:#f3f4f6;padding:.8rem;overflow:auto;border-radius:6px}@media(prefers-color-scheme:dark){body{background:#0b1220;color:#e5e7eb}pre{background:#111827}a{color:#4ade80}}</style>
 <h1>net-merge packages</h1>
-<p>Use all your internet connections at once. <a href="https://github.com/rohit267/net-merge">Project on GitHub</a>.</p>
-<h2>Debian, Ubuntu, Mint, Pop!_OS</h2>
+<p>Use all your internet connections at once. <a href="https://github.com/rohit267/net-merge">Project on GitHub</a>.
+Signing key fingerprint: <code>$KEY</code>.</p>
+<h2>Debian, Ubuntu, Mint, Pop!_OS, Raspberry Pi OS</h2>
 <pre>curl -fsSL $BASE/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg &gt;/dev/null
 echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] $BASE/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
 sudo apt update &amp;&amp; sudo apt install net-merge</pre>
-<h2>Fedora and RHEL-family</h2>
+<h2>Fedora, RHEL, Rocky, Alma</h2>
 <pre>sudo curl -fsSL -o /etc/yum.repos.d/net-merge.repo $BASE/rpm/net-merge.repo
 sudo dnf install net-merge</pre>
+<h2>openSUSE</h2>
+<pre>sudo zypper addrepo $BASE/rpm/net-merge.repo
+sudo zypper --gpg-auto-import-keys refresh
+sudo zypper install net-merge</pre>
+<h2>Arch, Manjaro, EndeavourOS</h2>
+<pre>curl -fsSL $BASE/apt/key.asc | sudo pacman-key --add -
+sudo pacman-key --lsign-key $KEY
+printf '\n[net-merge]\nSigLevel = Required\nServer = $BASE/arch/\$arch\n' | sudo tee -a /etc/pacman.conf
+sudo pacman -Sy net-merge</pre>
+<p>Or from the AUR: <code>yay -S net-merge-bin</code>.</p>
+<h2>Alpine</h2>
+<pre>sudo wget -O /etc/apk/keys/net-merge.rsa.pub $BASE/apk/net-merge.rsa.pub
+echo $BASE/apk | sudo tee -a /etc/apk/repositories
+sudo apk add net-merge</pre>
+<p>Everything else: the <code>.tar.gz</code> for your CPU on the <a href="https://github.com/rohit267/net-merge/releases/latest">releases page</a>.</p>
 HTML
 touch "$OUT/.nojekyll"
 echo "built apt and dnf repositories in $OUT"

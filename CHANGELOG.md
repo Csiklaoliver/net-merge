@@ -6,10 +6,13 @@ entry here before pushing a version tag.
 ## [Unreleased]
 
 ### Added
-- **`sudo apt install net-merge` and `sudo dnf install net-merge`.** Releases now include `.deb` and `.rpm`
-  packages (x86_64 and aarch64) and publish signed apt and dnf repositories on GitHub Pages, so net-merge is
-  installed and updated like any other package. The packages give net-merge its network rights themselves,
-  and add an app-menu entry, icons and AppStream information.
+- **net-merge as a normal package on every Linux distribution.** Releases now include a `.deb`, `.rpm`,
+  `.apk` (Alpine) and Arch package for every CPU: x86-64, ARM64, ARMv7, ARMv6 (Raspberry Pi), x86 32-bit,
+  RISC-V, PowerPC (ppc64le), s390x and LoongArch, plus a tarball for each. They are also published as signed
+  repositories on GitHub Pages, so `sudo apt install net-merge`, `sudo dnf install net-merge`,
+  `sudo zypper install net-merge`, `sudo apk add net-merge` and `sudo pacman -S net-merge` work after a
+  one-time setup, and the AUR has `net-merge` and `net-merge-bin`. The packages give net-merge its network
+  rights themselves, and add an app-menu entry, icons and AppStream information.
 
 ## [0.2.0] - 2026-10-16
 

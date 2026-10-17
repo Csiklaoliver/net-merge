@@ -82,12 +82,19 @@ net-merge tray                              # a green/grey icon appears in the m
 
 3. Optional: `net-merge autostart on` to start it when you log in.
 
+With Homebrew instead: `brew install rohit267/tap/net-merge`, then `sudo "$(brew --prefix)/bin/net-merge" install`
+and `net-merge tray` (run `install` again after each `brew upgrade net-merge`).
+
 `install` adds one small rule so that only `net-merge tray` can run as root without a password. To remove
 it all: `net-merge autostart off` and `sudo net-merge uninstall`.
 
 ### Linux
 
-**Debian, Ubuntu, Linux Mint, Pop!_OS** (apt). Run these once, then `apt` also keeps net-merge up to date:
+net-merge is packaged for the main distributions and for these CPUs: x86-64, ARM64, ARMv7, ARMv6
+(Raspberry Pi), x86 32-bit, RISC-V, PowerPC (ppc64le), s390x and LoongArch. Pick yours. Each way keeps
+net-merge up to date through your normal package manager.
+
+**Debian, Ubuntu, Linux Mint, Pop!_OS, Raspberry Pi OS** (apt):
 
 ```
 curl -fsSL https://rohit267.github.io/net-merge/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg >/dev/null
@@ -95,22 +102,57 @@ echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] https://rohit267.github.
 sudo apt update && sudo apt install net-merge
 ```
 
-**Fedora and RHEL-family** (dnf):
+**Fedora, RHEL, Rocky, Alma** (dnf):
 
 ```
 sudo curl -fsSL -o /etc/yum.repos.d/net-merge.repo https://rohit267.github.io/net-merge/rpm/net-merge.repo
 sudo dnf install net-merge
 ```
 
-Then open **net-merge** from your app menu, or run `net-merge tray`. The package gives net-merge the
-network rights it needs, so there is no password prompt. You can also download the `.deb` or `.rpm` from the
-[releases page](../../releases) and install it with `sudo apt install ./net-merge_*.deb` or
-`sudo dnf install ./net-merge-*.rpm`.
+**openSUSE** (zypper):
+
+```
+sudo zypper addrepo https://rohit267.github.io/net-merge/rpm/net-merge.repo
+sudo zypper --gpg-auto-import-keys refresh
+sudo zypper install net-merge
+```
+
+**Arch, Manjaro, EndeavourOS** (AUR, or our own repository):
+
+```
+yay -S net-merge-bin
+```
+
+or, without the AUR:
+
+```
+curl -fsSL https://rohit267.github.io/net-merge/apt/key.asc | sudo pacman-key --add -
+sudo pacman-key --lsign-key 0168C7AB77721656904811AE904F61E7F4F1C2A1
+printf '\n[net-merge]\nSigLevel = Required\nServer = https://rohit267.github.io/net-merge/arch/$arch\n' | sudo tee -a /etc/pacman.conf
+sudo pacman -Sy net-merge
+```
+
+**Alpine** (apk):
+
+```
+sudo wget -O /etc/apk/keys/net-merge.rsa.pub https://rohit267.github.io/net-merge/apk/net-merge.rsa.pub
+echo https://rohit267.github.io/net-merge/apk | sudo tee -a /etc/apk/repositories
+sudo apk add net-merge
+```
+
+**Homebrew** (Linux and macOS): `brew install rohit267/tap/net-merge`, then, once and again after each
+`brew upgrade net-merge`: `sudo setcap cap_net_admin,cap_net_raw+ep "$(readlink -f "$(command -v net-merge)")"`.
+
+Then open **net-merge** from your app menu, or run `net-merge tray`. The packages give net-merge the
+network rights it needs, so there is no password prompt. You can also download the `.deb`, `.rpm`, `.apk`
+or `.pkg.tar.zst` for your CPU from the [releases page](../../releases) and install it by hand
+(`sudo apt install ./net-merge_*.deb`, `sudo dnf install ./net-merge-*.rpm`, `sudo apk add --allow-untrusted ./net-merge_*.apk`,
+`sudo pacman -U ./net-merge-*.pkg.tar.zst`).
 
 **Any other distribution** (tarball):
 
-1. Download `net-merge-x.y.z-linux-x86_64.tar.gz` (or `-linux-aarch64.tar.gz` for ARM) from the
-   [releases page](../../releases).
+1. Download the `net-merge-x.y.z-linux-<cpu>.tar.gz` for your CPU from the [releases page](../../releases):
+   `x86_64`, `aarch64`, `armv7`, `armv6`, `i686`, `riscv64`, `ppc64le`, `s390x` or `loongarch64`.
 2. Run:
 
 ```
@@ -125,8 +167,9 @@ StatusNotifierItem: KDE, XFCE, Cinnamon, LXQt, Budgie, or GNOME with the *AppInd
 KStatusNotifierItem Support* extension (Ubuntu already has it). If your firewall blocks unknown traffic,
 trust the `net-merge` interface (for example `firewall-cmd --zone=trusted --add-interface=net-merge`).
 
-The packages are signed with the key in [`packaging/apt-signing-key.asc`](packaging/apt-signing-key.asc),
-fingerprint `879E D313 4D7C 1DC0 9E7B C722 6785 19FE 2CC9 8218`.
+The apt, dnf, zypper and Arch repositories are signed with the key in
+[`packaging/apt-signing-key.asc`](packaging/apt-signing-key.asc), fingerprint
+`0168 C7AB 7772 1656 9048 11AE 904F 61E7 F4F1 C2A1`.
 
 ### NixOS
 
