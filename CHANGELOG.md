@@ -14,6 +14,11 @@ entry here before pushing a version tag.
   `net-merge-macos-universal.tar.gz`, `net-merge-linux-$(uname -m).tar.gz`), so
   `releases/latest/download/...` links always give the newest one.
 
+### Fixed
+- `sudo net-merge install` refused on Macs where `/usr/local/bin` is writable by your user (Intel Macs
+  with Homebrew). It now puts its root-owned copy in `/opt/net-merge/bin` there, and links `net-merge` into
+  `/usr/local/bin`.
+
 ## [0.3.0] - 2026-10-17
 
 ### Added

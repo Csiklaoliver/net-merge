@@ -61,7 +61,7 @@ jobs:
           net-merge version
           /usr/local/bin/net-merge version
           sudo test -f /etc/sudoers.d/net-merge
-          sudo -n -l /usr/local/bin/net-merge tray
+          sudo -n -l "$(readlink -f /usr/local/bin/net-merge)" tray
 
   script-windows:
     name: install.ps1 Windows

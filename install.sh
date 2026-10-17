@@ -97,6 +97,8 @@ apk_install() {
 }
 pacman_install() {
     say "Installing with pacman"
+    # a fresh system may have no local pacman key yet, which signing ours needs
+    $SUDO pacman-key --list-secret-keys 2>/dev/null | grep -q '^sec' || $SUDO pacman-key --init
     if ! $SUDO pacman-key --list-keys "$FPR" >/dev/null 2>&1; then
         fetch "$BASE/apt/key.asc" > "$tmp/key.asc"
         $SUDO pacman-key --add "$tmp/key.asc"
