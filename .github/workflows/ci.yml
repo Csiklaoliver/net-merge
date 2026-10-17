@@ -165,8 +165,8 @@ jobs:
       - name: apk add net-merge (Alpine)
         run: |
           docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW alpine:3.22 sh -ec '
-            wget -qO /etc/apk/keys/net-merge.rsa.pub http://localhost:8000/apk/net-merge.rsa.pub
-            echo http://localhost:8000/apk >> /etc/apk/repositories
+            wget -qO /etc/apk/keys/net-merge.rsa.pub http://127.0.0.1:8000/apk/net-merge.rsa.pub
+            echo http://127.0.0.1:8000/apk >> /etc/apk/repositories
             apk add net-merge
             getcap /usr/bin/net-merge
             net-merge version'
