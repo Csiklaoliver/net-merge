@@ -10,7 +10,10 @@
 set -uo pipefail
 BIN=$(realpath "${1:-./net-merge}")
 STATE=/tmp/net-merge-e2e
-URL=https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb # large file on a CDN
+# Large files on CDNs. A runner sometimes gets nothing from one of them, so the next is tried.
+URLS=(https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+      https://archive.ubuntu.com/ubuntu/dists/noble/Contents-amd64.gz
+      https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb)
 REAL=$(ip -4 route show default | awk '{print $5; exit}')
 fails=0
 pass() { echo "PASS  $*"; }
@@ -85,17 +88,20 @@ if command -v dig >/dev/null; then
 fi
 
 echo "== 12 parallel downloads: both uplinks must carry traffic"
-r0=$(nic_bytes "$REAL"); v0=$(nic_bytes nmup-h)
-pids=()
-for _ in $(seq 1 12); do
-    curl -4 -s --max-time 40 -r 0-9999999 -o /dev/null "$URL" &
-    pids+=($!)
+for url in "${URLS[@]}"; do
+    r0=$(nic_bytes "$REAL"); v0=$(nic_bytes nmup-h)
+    pids=()
+    for _ in $(seq 1 12); do
+        curl -4 -s --max-time 40 -r 0-9999999 -o /dev/null "$url" &
+        pids+=($!)
+    done
+    wait "${pids[@]}"
+    sleep 2 # one status tick
+    r1=$(nic_bytes "$REAL"); v1=$(nic_bytes nmup-h)
+    real_mb=$(((r1 - r0) / 1000000)); veth_mb=$(((v1 - v0) / 1000000))
+    echo "   $url: via $REAL: ${real_mb} MB, via nmup-h: ${veth_mb} MB"
+    [ $((real_mb + veth_mb)) -ge 10 ] && break # something came through; only then is a bad split a real failure
 done
-wait "${pids[@]}"
-sleep 2 # one status tick
-r1=$(nic_bytes "$REAL"); v1=$(nic_bytes nmup-h)
-real_mb=$(((r1 - r0) / 1000000)); veth_mb=$(((v1 - v0) / 1000000))
-echo "   via $REAL: ${real_mb} MB, via nmup-h: ${veth_mb} MB"
 [ "$real_mb" -ge 10 ] && [ "$veth_mb" -ge 10 ] &&
     pass "downloads were split across both uplinks" || fail "downloads not split (real ${real_mb} MB, veth ${veth_mb} MB)"
 
