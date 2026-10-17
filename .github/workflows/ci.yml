@@ -104,7 +104,7 @@ jobs:
           test -f /usr/share/icons/hicolor/256x256/apps/net-merge.png
       - name: dnf install net-merge (Fedora)
         run: |
-          docker run --rm --network host fedora:latest bash -ec '
+          docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW fedora:latest bash -ec '
             curl -fsS -o /etc/yum.repos.d/net-merge.repo http://localhost:8000/rpm/net-merge.repo
             dnf install -y net-merge
             rpm -q net-merge
