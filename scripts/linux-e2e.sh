@@ -101,7 +101,17 @@ code=$(curl -4 -s --max-time 10 -o /dev/null -w '%{http_code}' https://example.c
 [ "$code" = 200 ] && pass "plain HTTPS works through net-merge" || fail "HTTPS through net-merge: $code"
 if command -v dig >/dev/null; then
     # Each query is a new UDP flow, so they spread over both uplinks.
+    nics() { jq -c '.NICs[] | {n: .Name, flows: .Total, in: .BytesIn, out: .BytesOut}' "$STATE/status.json" | tr '\n' ' '; echo; }
+    sleep 2; echo "   before: $(nics)"
     a1=$(dns_answers 1.1.1.1); a2=$(dns_answers 8.8.8.8); a3=$(dns_answers 9.9.9.9)
+    sleep 2; echo "   after:  $(nics)"
+    if [ $((a1 + a2 + a3)) -lt 36 ]; then
+        echo "   diag: UDP/53 conntrack in the second uplink's namespace and on the host"
+        sudo ip netns exec nmup grep 'udp.*dport=53' /proc/net/nf_conntrack | head -4
+        sudo grep 'udp.*dport=53' /proc/net/nf_conntrack | head -4
+        ip -s link show nmup-h | tail -4
+        "$BIN" status -state-dir "$STATE" | head -6
+    fi
     echo "   UDP DNS through net-merge: 1.1.1.1 $a1/12, 8.8.8.8 $a2/12, 9.9.9.9 $a3/12"
     [ $((a1 + a2 + a3)) -gt 0 ] && pass "UDP DNS works through net-merge" || fail "UDP DNS through net-merge"
 fi
