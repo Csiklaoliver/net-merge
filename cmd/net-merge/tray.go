@@ -22,6 +22,7 @@ func cmdTray(args []string) {
 	c.register(fs)
 	hidden := fs.Bool("hidden", true, "hide the console window of the elevated process")
 	startOff := fs.Bool("off", false, "start with system-wide mode OFF (default: ON)")
+	autoPause := fs.Bool("auto-pause", true, "pause by itself when fewer than two connections work, and resume when two do (pausing by hand always wins)")
 	fs.Parse(args)
 
 	if !platform.IsAdmin() {
@@ -84,9 +85,9 @@ func cmdTray(args []string) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	go func() { // logout, `launchctl bootout`, kill: turn off cleanly instead of leaving routes behind
 		<-sig
-		t.Off()
+		t.Close()
 		state.Clear(c.stateDir)
 		os.Exit(0)
 	}()
-	tray.Run(t, sched, bal, c.stateDir, !*startOff, ready)
+	tray.Run(t, sched, bal, c.stateDir, !*startOff, *autoPause, ready)
 }

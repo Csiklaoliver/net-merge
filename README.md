@@ -141,8 +141,8 @@ macOS cannot use Android USB tethering by itself. The app **TetherKit** adds tha
 3. Click **Apply** in TetherKit. net-merge adds the new network in a few seconds.
 
 > **Start net-merge first, then connect the Android phone.** macOS drops the TetherKit connection each
-> time net-merge starts, quits, or is paused and resumed. If the phone link disappears, click **Apply**
-> in TetherKit again. The iPhone is not affected.
+> time net-merge starts or quits. Pausing and resuming is safe: net-merge keeps its virtual adapter while
+> paused. If the phone link disappears, click **Apply** in TetherKit again. The iPhone is not affected.
 
 A phone uses its mobile data, so part of your traffic goes through it while net-merge runs. Quit
 net-merge when you do not want that.
@@ -151,10 +151,15 @@ net-merge when you do not want that.
 
 1. Start net-merge. A tray icon appears (menu bar on Mac).
 2. The icon is **green** when it is merging and **grey** when it is paused.
-3. **Hover** the icon to see the speed of each connection and the total.
-4. **Right-click** the icon (on Mac, click it) to open the menu. It shows each connection's speed, how
+3. **It pauses by itself** when fewer than two connections have internet, because there is nothing to
+   merge, and the menu says *Paused: one connection*. It **starts again by itself** when a second
+   connection works. If you pause or start it yourself, that choice wins: it will not start again after
+   you paused it. Untick *Pause when there is only one connection* in the menu to switch this off, or run
+   `net-merge tray -auto-pause=false`.
+4. **Hover** the icon to see the speed of each connection and the total.
+5. **Right-click** the icon (on Mac, click it) to open the menu. It shows each connection's speed, how
    many connections net-merge gave it, and the buttons *Pause merging* / *Start merging* and *Quit*.
-5. To start it at sign-in: tick the box in the Windows installer, or run `net-merge autostart on`.
+6. To start it at sign-in: tick the box in the Windows installer, or run `net-merge autostart on`.
 
 Tips:
 - Torrent clients already use every connection. Leave qBittorrent's network interface on *Any interface*.
@@ -196,8 +201,8 @@ Run `net-merge list`. It shows which connections are used and why the others are
 <summary><strong>The Android connection disappears on a Mac</strong></summary>
 <br>
 
-macOS drops the TetherKit connection each time net-merge starts, quits, or is paused and resumed. Start
-net-merge first, then connect the phone. If it vanishes, click **Apply** in TetherKit again.
+macOS drops the TetherKit connection each time net-merge starts or quits (pausing and resuming is safe).
+Start net-merge first, then connect the phone. If it vanishes, click **Apply** in TetherKit again.
 </details>
 
 <details>
@@ -215,6 +220,20 @@ go to *Computer Configuration > Administrative Templates > Network > Windows Con
 
 The apps are not code-signed yet. On macOS run `xattr -d com.apple.quarantine net-merge`. On Windows click
 *More info*, then *Run anyway*.
+</details>
+
+<details>
+<summary><strong>The menu says "Paused: one connection"</strong></summary>
+<br>
+
+net-merge only has something to do with two or more connections that have internet, so it waits. Plug
+in or connect the second one (see *Add a second connection*) and it starts by itself after a few seconds.
+To merge anyway, choose *Start merging* (it then stays on until a second connection has come and gone), or
+untick *Pause when there is only one connection*.
+
+Switching merging on or off cuts the connections that are open at that moment, which is why it waits 10
+seconds before pausing (2 minutes if apps still have connections open) and 3 seconds before resuming,
+and never switches by itself more than once every 30 seconds.
 </details>
 
 <details>

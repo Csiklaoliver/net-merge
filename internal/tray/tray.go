@@ -19,12 +19,13 @@ import (
 
 const trayRows = 4 // adapters shown in the menu; extra rows stay hidden
 
-// Run shows the tray icon and blocks until Quit. It turns merging on at once if startOn, and
-// closes ready once the icon exists.
-func Run(t *tun.Tun, sched *engine.Scheduler, bal *engine.Balancer, stateDir string, startOn bool, ready chan struct{}) {
+// Run shows the tray icon and blocks until Quit, and closes ready once the icon exists. With
+// startOn it merges as soon as it can (at once, or, with autoPause, once two connections work).
+func Run(t *tun.Tun, sched *engine.Scheduler, bal *engine.Balancer, stateDir string, startOn, autoPause bool, ready chan struct{}) {
 	ui := &trayUI{tun: t, sched: sched, bal: bal, stateDir: stateDir, startOn: startOn,
 		iconOn: icon.Tray(true), iconOff: icon.Tray(false), ready: ready}
-	exit := func() { t.Off(); state.Clear(stateDir) }
+	ui.ap.enabled = autoPause
+	exit := func() { t.Close(); state.Clear(stateDir) }
 	systray.Run(ui.onReady, exit)
 	exit() // macOS's Run returns on Quit without calling onExit; both are idempotent
 }
@@ -39,14 +40,16 @@ type trayUI struct {
 	iconOff  []byte
 	ready    chan struct{} // closed once the tray icon exists
 
-	header, toggleItem, v6Item *systray.MenuItem
-	rows                       []*systray.MenuItem
-	lastOn                     *bool
-	lastHeader                 string
-	lastTip                    string
-	lastRows                   [trayRows]string
-	lastErr                    string
-	busyUntil                  time.Time
+	ap autoPauser
+
+	header, toggleItem, v6Item, autoItem *systray.MenuItem
+	rows                                 []*systray.MenuItem
+	lastOn                               *bool
+	lastHeader                           string
+	lastTip                              string
+	lastRows                             [trayRows]string
+	lastErr                              string
+	busyUntil                            time.Time
 }
 
 func (u *trayUI) onReady() {
@@ -66,11 +69,21 @@ func (u *trayUI) onReady() {
 	}
 	systray.AddSeparator()
 	u.v6Item = systray.AddMenuItemCheckbox("Use all adapters (IPv6 only if every adapter has it)", "Ticked: apps are pushed to IPv4 so every adapter is used. Unticked: IPv6 is allowed and funnels onto the adapters that have it.", u.bal.V6Mode() == engine.V6Auto)
+	u.autoItem = systray.AddMenuItemCheckbox("Pause when there is only one connection", "Pauses merging by itself when fewer than two connections have internet, and starts it again when a second one works. Pausing or starting by hand always wins.", u.ap.enabled)
 	u.toggleItem = systray.AddMenuItem("Start merging", "")
 	quit := systray.AddMenuItem("Quit", "Turns system-wide mode off and exits")
 
 	go func() {
-		if u.startOn {
+		u.ap.start(u.startOn)
+		switch {
+		case !u.startOn:
+		case u.ap.enabled:
+			// Merging starts when two connections work. The adapter is made now, before a phone is
+			// plugged in, because on macOS making it later would drop that phone's link.
+			if err := u.tun.Warm(); err != nil {
+				logx.Printf("warning: %v\n", err)
+			}
+		default:
 			u.turn(true)
 		}
 		tick := time.NewTicker(time.Second)
@@ -79,7 +92,14 @@ func (u *trayUI) onReady() {
 			u.refresh()
 			select {
 			case <-u.toggleItem.ClickedCh:
-				u.turn(!u.tun.IsOn())
+				u.manual(!u.tun.IsOn())
+			case <-u.autoItem.ClickedCh:
+				if u.autoItem.Checked() {
+					u.autoItem.Uncheck()
+				} else {
+					u.autoItem.Check()
+				}
+				u.ap.setEnabled(u.autoItem.Checked(), u.tun.IsOn())
 			case <-u.v6Item.ClickedCh:
 				if u.v6Item.Checked() {
 					u.v6Item.Uncheck()
@@ -97,13 +117,47 @@ func (u *trayUI) onReady() {
 					systray.Quit()
 					return
 				case state.TakeMarker(u.stateDir, "off"):
-					u.turn(false)
+					u.manual(false)
 				case state.TakeMarker(u.stateDir, "on"):
-					u.turn(true)
+					u.manual(true)
+				}
+				switch u.ap.tick(time.Now(), u.tun.IsOn(), u.usable(), u.activeFlows()) {
+				case autoPause:
+					u.turn(false)
+				case autoResume:
+					if u.turn(true); !u.tun.IsOn() {
+						u.ap.resumeFailed()
+					}
 				}
 			}
 		}
 	}()
+}
+
+// manual is a switch by the user (menu or `net-merge on|off`), which pausing by itself must respect.
+func (u *trayUI) manual(on bool) {
+	u.ap.userSet(on, u.usable())
+	u.turn(on)
+}
+
+// usable is how many connections reach the internet right now.
+func (u *trayUI) usable() (n int) {
+	for _, s := range u.sched.Snapshot() {
+		if s.Present && (s.State == "up" || s.State6 == "up") {
+			n++
+		}
+	}
+	return n
+}
+
+// activeFlows is how many connections net-merge is relaying right now.
+func (u *trayUI) activeFlows() (n int64) {
+	for _, s := range u.sched.Snapshot() {
+		if s.Present {
+			n += s.Active
+		}
+	}
+	return n
 }
 
 func (u *trayUI) turn(on bool) {
@@ -152,6 +206,9 @@ func (u *trayUI) refresh() {
 		}
 	}
 	state := stateWord(on)
+	if !on && u.ap.enabled && u.ap.waiting && !u.ap.manualOff {
+		state = "Paused: one connection"
+	}
 
 	if u.lastErr != "" {
 		u.setHeader("Error: " + shorten(u.lastErr, 70))
