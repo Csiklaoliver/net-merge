@@ -120,6 +120,13 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
+  # Version-less copies of the downloads, for links that always give the newest release.
+  aliases:
+    needs: [linux, macos]
+    uses: ./.github/workflows/release-aliases.yml
+    with:
+      tag: ${{ github.ref_name }}
+
   # Adds the macOS build to the release the Windows job creates.
   macos:
     needs: release
