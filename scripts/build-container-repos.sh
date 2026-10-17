@@ -26,8 +26,9 @@ docker run --rm -e OWNER="$owner" \
         apk add --no-cache abuild >/dev/null
         for f in /pkgs/*.apk; do
             b=$(basename "$f" .apk); arch=${b#net-merge_*_}   # net-merge_1.2.3_x86_64 -> x86_64
+            ver=$(tar -xzOf "$f" .PKGINFO | sed -n "s/^pkgver = //p")
             mkdir -p /site/apk/$arch
-            cp "$f" /site/apk/$arch/
+            cp "$f" /site/apk/$arch/net-merge-$ver.apk   # apk looks for <name>-<version>.apk
         done
         for d in /site/apk/*/; do
             (cd "$d" && apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && abuild-sign -k /key/net-merge.rsa APKINDEX.tar.gz)
