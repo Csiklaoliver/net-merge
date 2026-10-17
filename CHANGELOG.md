@@ -5,12 +5,22 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17
+
 ### Added
+- **net-merge as a normal package on every Linux distribution.** Releases now include a `.deb`, `.rpm`,
+  `.apk` (Alpine) and Arch package for every CPU: x86-64, ARM64, ARMv7, ARMv6 (Raspberry Pi), x86 32-bit,
+  RISC-V, PowerPC (ppc64le), s390x and LoongArch, plus a tarball for each. They are also published as signed
+  repositories on GitHub Pages, so `sudo apt install net-merge`, `sudo dnf install net-merge`,
+  `sudo zypper install net-merge`, `sudo apk add net-merge` and `sudo pacman -S net-merge` work after a
+  one-time setup. The packages give net-merge its network rights themselves, and add an app-menu entry,
+  icons and AppStream information.
 - **Pauses by itself when only one connection works, and resumes when two do.** With fewer than two
   connections that reach the internet there is nothing to merge, so the tray pauses merging ("Paused: one
   connection") and starts it again when a second connection works. Pausing or starting by hand always wins,
   and it waits for things to settle first: 10 seconds with nothing moving (2 minutes if a download or
-  upload is still going) before pausing, 3 seconds before resuming, and at least 30 seconds between automatic switches.
+  upload is still going) before pausing, 3 seconds before resuming, and at least 30 seconds between
+  automatic switches.
   Untick *Pause when there is only one connection* in the tray menu, or run `net-merge tray -auto-pause=false`.
 
 ### Changed
