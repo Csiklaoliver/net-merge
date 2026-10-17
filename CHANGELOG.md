@@ -16,6 +16,7 @@ entry here before pushing a version tag.
 ### Changed
 - On macOS, pausing and resuming no longer removes and recreates the virtual adapter, so it no longer
   drops a TetherKit (Android) link. Starting and quitting still do.
+- New connections no longer wait while the once-a-second adapter speed reading runs (thanks @b0r1ssh).
 
 ## [0.2.0] - 2026-10-16
 
