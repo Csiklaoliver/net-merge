@@ -121,7 +121,7 @@ func (u *trayUI) onReady() {
 				case state.TakeMarker(u.stateDir, "on"):
 					u.manual(true)
 				}
-				switch u.ap.tick(time.Now(), u.tun.IsOn(), u.usable(), u.activeFlows()) {
+				switch u.ap.tick(time.Now(), u.tun.IsOn(), u.usable(), u.movingFlows()) {
 				case autoPause:
 					u.turn(false)
 				case autoResume:
@@ -150,12 +150,18 @@ func (u *trayUI) usable() (n int) {
 	return n
 }
 
-// activeFlows is how many connections net-merge is relaying right now.
-func (u *trayUI) activeFlows() (n int64) {
+// movingFlows is how many connections net-merge is relaying while data is really moving. Idle
+// keep-alive connections are always open, so they don't count and don't hold back a pause.
+func (u *trayUI) movingFlows() (n int64) {
+	var rate float64
 	for _, s := range u.sched.Snapshot() {
 		if s.Present {
 			n += s.Active
+			rate += s.RateIn + s.RateOut
 		}
+	}
+	if rate < quietRate {
+		return 0
 	}
 	return n
 }

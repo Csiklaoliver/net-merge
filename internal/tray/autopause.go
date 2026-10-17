@@ -7,10 +7,11 @@ import "time"
 // open at that moment, so both directions wait for things to settle, and automatic switches are
 // spaced apart so a flapping link can't toggle it all the time.
 const (
-	pauseAfterIdle = 10 * time.Second // one connection and no flow going through net-merge
-	pauseAfterBusy = 2 * time.Minute  // one connection but flows are open: give them time to end
+	pauseAfterIdle = 10 * time.Second // one connection and nothing moving through net-merge
+	pauseAfterBusy = 2 * time.Minute  // one connection but data is still moving: give it time to end
 	resumeAfter    = 3 * time.Second  // two or more connections
 	autoGap        = 30 * time.Second // least time between two automatic switches
+	quietRate      = 50_000           // bytes/s through net-merge under which it counts as quiet (about 0.4 Mbit/s)
 )
 
 type autoAction int
@@ -27,6 +28,7 @@ type autoPauser struct {
 	held       bool // the user started it with one connection: no auto-pause until two have been seen
 	waiting    bool // paused by us, or not started yet: resumes when two connections are usable
 	low, high  time.Duration
+	quiet      time.Duration // how long nothing has been moving
 	lastTick   time.Time
 	lastSwitch time.Time
 }
@@ -41,13 +43,18 @@ func (a *autoPauser) start(startOn bool) {
 }
 
 // tick runs about once a second. on is whether merging is on, usable how many connections reach
-// the internet, active how many flows net-merge is relaying.
+// the internet, active how many flows are moving data through net-merge (0 when it is quiet).
 func (a *autoPauser) tick(now time.Time, on bool, usable int, active int64) autoAction {
 	dt := time.Second
 	if d := now.Sub(a.lastTick); !a.lastTick.IsZero() && d > 0 && d < 2*time.Second {
 		dt = d // after a sleep one second counts, not the whole gap
 	}
 	a.lastTick = now
+	if active == 0 {
+		a.quiet += dt
+	} else {
+		a.quiet = 0
+	}
 	if !a.enabled {
 		a.low, a.high = 0, 0
 		return autoNone
@@ -59,11 +66,8 @@ func (a *autoPauser) tick(now time.Time, on bool, usable int, active int64) auto
 	switch {
 	case on && usable < 2 && !a.held:
 		a.low, a.high = a.low+dt, 0
-		limit := pauseAfterBusy
-		if active == 0 {
-			limit = pauseAfterIdle
-		}
-		if a.low >= limit && !cooling {
+		settled := a.low >= pauseAfterIdle && a.quiet >= pauseAfterIdle
+		if (settled || a.low >= pauseAfterBusy) && !cooling {
 			a.low, a.waiting, a.lastSwitch = 0, true, now
 			return autoPause
 		}

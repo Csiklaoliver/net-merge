@@ -45,6 +45,18 @@ func TestBusyFlowsDelayThePause(t *testing.T) {
 	}
 }
 
+func TestAShortStallDoesNotPause(t *testing.T) {
+	a, now := newPauser(true)
+	a.waiting = false
+	run(a, now, 30*time.Second, true, 1, 5) // a transfer is going
+	if act, _ := run(a, now, 9*time.Second, true, 1, 0); act != autoNone {
+		t.Fatal("paused during a short stall")
+	}
+	if act, at := run(a, now, 3*time.Second, true, 1, 0); act != autoPause || at != time.Second {
+		t.Fatalf("want a pause after 10 quiet seconds, got %v after %v", act, at)
+	}
+}
+
 func TestSecondConnectionResetsThePauseTimer(t *testing.T) {
 	a, now := newPauser(true)
 	a.waiting = false

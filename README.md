@@ -232,7 +232,8 @@ To merge anyway, choose *Start merging* (it then stays on until a second connect
 untick *Pause when there is only one connection*.
 
 Switching merging on or off cuts the connections that are open at that moment, which is why it waits 10
-seconds before pausing (2 minutes if apps still have connections open) and 3 seconds before resuming,
+seconds with nothing moving before pausing (2 minutes if a download or upload is still going) and
+3 seconds before resuming,
 and never switches by itself more than once every 30 seconds.
 </details>
 
