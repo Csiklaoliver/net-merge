@@ -52,7 +52,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Build tarballs
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.48.0
+      - name: Build tarballs, .deb and .rpm
         run: |
           v='${{ github.ref_name }}'; v=${v#v}
           mkdir dist
@@ -60,12 +62,59 @@ jobs:
             goarch=${pair%%:*}; name=${pair##*:}
             CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -ldflags "-s -w -X main.version=$v" -o net-merge ./cmd/net-merge
             tar -czf dist/net-merge-$v-linux-$name.tar.gz net-merge LICENSE THIRD-PARTY-NOTICES.md
+            for p in deb rpm; do
+              VERSION=$v ARCH=$goarch "$(go env GOPATH)/bin/nfpm" package -p $p -f packaging/nfpm.yaml -t dist/
+            done
             rm net-merge
           done
       - name: Upload to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload '${{ github.ref_name }}' dist/net-merge-*-linux-*.tar.gz --clobber
+        run: gh release upload '${{ github.ref_name }}' dist/net-merge-*-linux-*.tar.gz dist/*.deb dist/*.rpm --clobber
+
+  # Rebuilds the signed apt and dnf repositories from every release's .deb/.rpm and publishes them
+  # on GitHub Pages: sudo apt install net-merge / sudo dnf install net-merge. Needs the secret
+  # APT_GPG_PRIVATE_KEY (the armored private signing key) and Pages set to "GitHub Actions".
+  repos:
+    needs: linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y apt-utils createrepo-c gnupg
+      - name: Import the signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          test -n "$APT_GPG_PRIVATE_KEY" || { echo "secret APT_GPG_PRIVATE_KEY is not set"; exit 1; }
+          echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "GPG_KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')" >> "$GITHUB_ENV"
+      - name: Collect the packages of every release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir pkgs
+          for tag in $(gh release list --json tagName -q '.[].tagName'); do
+            gh release download "$tag" --pattern '*.deb' --pattern '*.rpm' --dir pkgs --skip-existing 2>/dev/null || true
+          done
+          ls -la pkgs
+      - name: Build the repositories
+        env:
+          REPO_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: scripts/build-repos.sh pkgs site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   # Adds the macOS build to the release the Windows job creates.
   macos:

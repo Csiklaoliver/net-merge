@@ -5,6 +5,12 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Added
+- **`sudo apt install net-merge` and `sudo dnf install net-merge`.** Releases now include `.deb` and `.rpm`
+  packages (x86_64 and aarch64) and publish signed apt and dnf repositories on GitHub Pages, so net-merge is
+  installed and updated like any other package. The packages give net-merge its network rights themselves,
+  and add an app-menu entry, icons and AppStream information.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added
