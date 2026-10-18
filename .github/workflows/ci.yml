@@ -91,6 +91,22 @@ jobs:
         if: always()
         run: cat /tmp/net-merge-smoke*.log 2>/dev/null || true
 
+  # System-wide mode for real, as admin: Wintun, routes, the internet probe over pinned sockets,
+  # relaying and off; also with the NIC demoted to secondary and with weak host send/forwarding on.
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - shell: pwsh
+        run: |
+          scripts/fetch-wintun.ps1 -OutDir dist
+          go build -o dist/net-merge.exe ./cmd/net-merge
+          go build -o dist/winfakeup.exe ./scripts/winfakeup
+          scripts/windows-smoke.ps1 dist\net-merge.exe
+
   # The Linux packages for every CPU and the apt, dnf/zypper, Alpine and Arch repositories, tried for
   # real: build them, serve them on localhost, then install net-merge from them on Ubuntu (here),
   # Debian, Fedora, Rocky, openSUSE, Alpine and Arch.
