@@ -46,6 +46,22 @@ dig +short +time=3 +tries=1 @1.1.1.1 example.com | grep -qE '^[0-9.]+$' &&
 relayed=$(jq '[.NICs[].Total] | add' /var/run/net-merge/status.json 2>/dev/null || jq '[.NICs[].Total] | add' "$STATE/status.json")
 [ "${relayed:-0}" -ge 1 ] && pass "flows were relayed by net-merge ($relayed)" || fail "no flow went through net-merge"
 
+# What macOS does when a tether becomes the primary service: the old primary loses its unscoped
+# default and gets a scoped one, which ours already is. It must survive the next sync (#20).
+echo "== the primary adapter stops being primary: its scoped default must stay"
+read -r gw nic < <(netstat -rn -f inet | awk '$1 == "default" && $3 !~ /I/ {print $2, $4; exit}')
+sudo route -q -n delete default "$gw"
+sleep 5 # more than one 3 s sync
+netstat -rn -f inet | grep -E "^default .*I.* $nic" >/dev/null &&
+    pass "$nic keeps a scoped default after it stops being primary" || fail "$nic lost its default route when it stopped being primary"
+[ "$(http)" = 200 ] && pass "HTTPS still works through net-merge" || fail "HTTPS through net-merge failed after the handover"
+# and back: macOS replaces the scoped default with an unscoped one, net-merge adds its own again
+sudo route -q -n delete default "$gw" -ifscope "$nic"
+sudo route -q -n add default "$gw"
+sleep 5
+netstat -rn -f inet | grep -E "^default .*I.* $nic" >/dev/null &&
+    pass "net-merge scoped $nic again once it was primary again" || fail "no scoped default on $nic after it became primary again"
+
 echo "== off: adapter, routes and scoped defaults go away, internet still works"
 "$BIN" off -state-dir "$STATE"
 sleep 1

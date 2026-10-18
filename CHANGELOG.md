@@ -18,6 +18,10 @@ entry here before pushing a version tag.
   Windows line and every manual way.
 
 ### Fixed
+- **macOS: the wired Ethernet disappeared when an Android phone was connected through TetherKit** (#20).
+  When the phone became the primary connection, macOS could not add its own route for the Ethernet next
+  to net-merge's, and net-merge then removed its route, leaving the Ethernet with none until the cable was
+  plugged in again. net-merge now leaves that route to macOS.
 - **Windows: turning on merging could stop all internet, with every adapter showing "no internet"**
   (#10). On an adapter with *weak host send* or *forwarding* turned on, which Mobile Hotspot, Internet
   Connection Sharing, Hyper-V and some VPNs do, Windows ignores the adapter a connection is pinned to, so
