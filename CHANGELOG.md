@@ -5,6 +5,8 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-19
+
 ### Added
 - **One-line install.** `curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh` on
   macOS and Linux (it uses Homebrew, apt, dnf, zypper, apk or pacman when it can, the release tarball
