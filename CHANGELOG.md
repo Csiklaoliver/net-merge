@@ -18,6 +18,12 @@ entry here before pushing a version tag.
   Windows line and every manual way.
 
 ### Fixed
+- **Windows: turning on merging could stop all internet, with every adapter showing "no internet"**
+  (#10). On an adapter with *weak host send* or *forwarding* turned on, which Mobile Hotspot, Internet
+  Connection Sharing, Hyper-V and some VPNs do, Windows ignores the adapter a connection is pinned to, so
+  net-merge's own connections went back into its virtual adapter. While merging, net-merge now turns those
+  two settings off on the adapters it uses and puts them back afterwards (sharing that connection pauses
+  meanwhile). It also re-applies its virtual adapter's address when Windows drops it right after start.
 - `sudo net-merge install` refused on Macs where `/usr/local/bin` is writable by your user (Intel Macs
   with Homebrew). It now puts its root-owned copy in `/opt/net-merge/bin` there, and links `net-merge` into
   `/usr/local/bin`.
