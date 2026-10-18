@@ -13,6 +13,9 @@ entry here before pushing a version tag.
 - Releases also carry the downloads under names without the version (`net-merge-setup.exe`,
   `net-merge-macos-universal.tar.gz`, `net-merge-linux-$(uname -m).tar.gz`), so
   `releases/latest/download/...` links always give the newest one.
+- **One-line uninstall** on macOS and Linux: `curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh -s -- uninstall`
+  stops net-merge and removes it the way it was installed, with its repository and key. The README has the
+  Windows line and every manual way.
 
 ### Fixed
 - `sudo net-merge install` refused on Macs where `/usr/local/bin` is writable by your user (Intel Macs

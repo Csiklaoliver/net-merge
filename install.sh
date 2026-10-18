@@ -8,6 +8,10 @@
 # macOS: Homebrew if it is installed, otherwise the release tarball.
 # Then it starts the tray. NET_MERGE_METHOD=tarball skips the package managers, NET_MERGE_NO_START=1
 # leaves the tray off.
+#
+# Uninstall, however it was installed:
+#
+#   curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh -s -- uninstall
 set -eu
 
 REPO=https://github.com/rohit267/net-merge
@@ -108,6 +112,71 @@ pacman_install() {
         printf '\n[net-merge]\nSigLevel = Required\nServer = %s/arch/$arch\n' "$BASE" | $SUDO tee -a /etc/pacman.conf >/dev/null
     $SUDO pacman -Sy --needed --noconfirm net-merge
 }
+
+# ---- uninstall: stop it, then remove it the way it was installed, with the repository it came from
+uninstall() {
+    say "Stopping net-merge"
+    if have net-merge; then
+        net-merge quit >/dev/null 2>&1 || true           # the tray
+        $SUDO net-merge off >/dev/null 2>&1 || true      # system-wide mode started from a terminal
+        net-merge autostart off >/dev/null 2>&1 || true  # start at sign-in
+        sleep 2
+    fi
+    if [ "$(uname -s)" = Darwin ]; then
+        for exe in /opt/net-merge/bin/net-merge /usr/local/bin/net-merge; do
+            [ -x "$exe" ] && { $SUDO "$exe" uninstall || true; break; }   # the root-owned copy and the sudoers rule
+        done
+        if have brew && brew list --formula net-merge >/dev/null 2>&1; then
+            say "Removing with Homebrew"
+            brew uninstall net-merge
+            brew untap rohit267/tap >/dev/null 2>&1 || true
+        fi
+        $SUDO rm -rf /var/run/net-merge "$HOME/Library/Logs/net-merge.log"
+    else
+        if have dpkg && dpkg -s net-merge >/dev/null 2>&1; then
+            say "Removing with apt"
+            $SUDO env DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq net-merge
+            $SUDO rm -f /etc/apt/sources.list.d/net-merge.list /usr/share/keyrings/net-merge.gpg
+        elif have rpm && rpm -q net-merge >/dev/null 2>&1; then
+            if have zypper; then
+                say "Removing with zypper"
+                $SUDO zypper --non-interactive remove net-merge
+                $SUDO zypper --non-interactive removerepo net-merge >/dev/null 2>&1 || true
+            else
+                pm=dnf; have dnf || pm=yum
+                say "Removing with $pm"
+                $SUDO "$pm" remove -y net-merge
+                $SUDO rm -f /etc/yum.repos.d/net-merge.repo
+            fi
+        elif have apk && apk info -e net-merge >/dev/null 2>&1; then
+            say "Removing with apk"
+            $SUDO apk del net-merge
+            $SUDO sed -i "\#^$BASE/apk\$#d" /etc/apk/repositories
+            $SUDO rm -f /etc/apk/keys/net-merge.rsa.pub
+        elif have pacman && pacman -Q net-merge >/dev/null 2>&1; then
+            say "Removing with pacman"
+            $SUDO pacman -R --noconfirm net-merge
+            $SUDO sed -i '/^\[net-merge\]$/,/^Server = .*net-merge/d' /etc/pacman.conf
+            $SUDO pacman-key --delete "$FPR" >/dev/null 2>&1 || true
+        fi
+        if have brew && brew list --formula net-merge >/dev/null 2>&1; then
+            say "Removing with Homebrew"
+            brew uninstall net-merge
+            brew untap rohit267/tap >/dev/null 2>&1 || true
+        fi
+        $SUDO rm -f /usr/local/bin/net-merge   # the tarball
+        rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/net-merge"
+    fi
+    hash -r 2>/dev/null || true
+    have net-merge && die "a net-merge is still at $(command -v net-merge); remove it by hand"
+    say "net-merge is uninstalled. Your network settings are back to normal."
+}
+
+case ${1:-} in
+    uninstall|--uninstall) uninstall; exit 0 ;;
+    '') ;;
+    *) die "unknown option $1 (use: uninstall)" ;;
+esac
 
 # ---- pick the way
 method=${NET_MERGE_METHOD:-auto}

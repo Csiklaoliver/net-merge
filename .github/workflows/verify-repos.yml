@@ -42,7 +42,14 @@ jobs:
               ${{ matrix.prep }}
               sh /src/install.sh
               sh /src/install.sh   # again: an upgrade must work too
-              net-merge version'
+              net-merge version
+              sh /src/install.sh uninstall
+              # (a "!" check would never fail under sh -e, so these are tests; hash -r: forget the old path)
+              hash -r; test -z "$(command -v net-merge)"
+              test ! -e /etc/apt/sources.list.d/net-merge.list
+              test ! -e /etc/yum.repos.d/net-merge.repo
+              test -z "$(grep -ls net-merge /etc/pacman.conf /etc/apk/repositories)"
+              test -z "$(zypper lr 2>/dev/null | grep net-merge)"'
 
   script-macos:
     strategy:
@@ -62,6 +69,9 @@ jobs:
           /usr/local/bin/net-merge version
           sudo test -f /etc/sudoers.d/net-merge
           sudo -n -l "$(readlink -f /usr/local/bin/net-merge)" tray
+          sh install.sh uninstall
+          hash -r; test -z "$(command -v net-merge)"
+          sudo test ! -e /etc/sudoers.d/net-merge
 
   script-windows:
     name: install.ps1 Windows
@@ -73,6 +83,10 @@ jobs:
           $env:NET_MERGE_NO_START = '1'
           ./install.ps1
           & "$env:ProgramFiles\net-merge\net-merge.exe" version
+          # the README's uninstall line
+          & "$env:ProgramFiles\net-merge\net-merge.exe" quit; Start-Process "$env:ProgramFiles\net-merge\unins000.exe" '/SILENT' -Verb RunAs -Wait
+          for ($i = 0; $i -lt 30 -and (Test-Path "$env:ProgramFiles\net-merge\net-merge.exe"); $i++) { Start-Sleep 1 }
+          if (Test-Path "$env:ProgramFiles\net-merge\net-merge.exe") { throw 'net-merge is still installed' }
 
   # the README's own commands, one system at a time
   readme-commands:
