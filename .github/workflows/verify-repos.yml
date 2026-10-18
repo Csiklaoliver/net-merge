@@ -44,8 +44,8 @@ jobs:
               sh /src/install.sh   # again: an upgrade must work too
               net-merge version
               sh /src/install.sh uninstall
-              # (a "!" check would never fail under sh -e, so these are tests)
-              test -z "$(command -v net-merge)"
+              # (a "!" check would never fail under sh -e, so these are tests; hash -r: forget the old path)
+              hash -r; test -z "$(command -v net-merge)"
               test ! -e /etc/apt/sources.list.d/net-merge.list
               test ! -e /etc/yum.repos.d/net-merge.repo
               test -z "$(grep -ls net-merge /etc/pacman.conf /etc/apk/repositories)"
@@ -70,7 +70,7 @@ jobs:
           sudo test -f /etc/sudoers.d/net-merge
           sudo -n -l "$(readlink -f /usr/local/bin/net-merge)" tray
           sh install.sh uninstall
-          test -z "$(command -v net-merge)"
+          hash -r; test -z "$(command -v net-merge)"
           sudo test ! -e /etc/sudoers.d/net-merge
 
   script-windows:
