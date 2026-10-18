@@ -131,14 +131,25 @@ func startScopedSync() error {
 }
 
 func stopScopedSync() {
+	routes, _ := nics.DefaultRoutes()
 	scoped.mu.Lock()
 	defer scoped.mu.Unlock()
 	if scoped.stop != nil {
 		close(scoped.stop)
 		scoped.stop = nil
 	}
+	primary := map[scopedKey]bool{}
+	for _, r := range routes {
+		if !r.Scoped && r.GW != nil {
+			primary[scopedKey{r.Name, r.V6}] = true
+		}
+	}
 	for k, gw := range scoped.added {
-		run("/sbin/route", scopedArgs("delete", k, gw)...)
+		// Only where the adapter is still primary: on one that stopped being primary since the last
+		// sync, macOS needs this route as its own scoped default (see syncScoped).
+		if routes == nil || primary[k] {
+			run("/sbin/route", scopedArgs("delete", k, gw)...)
+		}
 	}
 	scoped.added = nil
 }
@@ -188,7 +199,12 @@ func syncScoped(stop chan struct{}) error {
 	}
 	for k, gw := range scoped.added {
 		if _, ok := want[k]; !ok {
-			run("/sbin/route", scopedArgs("delete", k, gw)...)
+			// No longer the primary service (a tether took over): macOS now wants a scoped default
+			// there itself, and ours, already in its place, made its own add fail. Leave the route to
+			// macOS; deleting it would leave the adapter with no default route until it reconnects (#20).
+			if !have[k] {
+				run("/sbin/route", scopedArgs("delete", k, gw)...)
+			}
 			delete(scoped.added, k)
 		}
 	}
