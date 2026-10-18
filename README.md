@@ -160,8 +160,89 @@ Then start it with `net-merge tray` (Linux, macOS) or from the Start menu (Windo
 - **Signed repositories:** apt, dnf, zypper and pacman use the key in
   [`packaging/apt-signing-key.asc`](packaging/apt-signing-key.asc), fingerprint
   `0168 C7AB 7772 1656 9048 11AE 904F 61E7 F4F1 C2A1`.
-- **Uninstall:** your package manager (`sudo apt remove net-merge`, `brew uninstall net-merge`, ...) or
-  Windows' *Installed apps*. On macOS also `net-merge autostart off` and `sudo net-merge uninstall`.
+</details>
+
+## Uninstall
+
+**macOS and Linux**: paste this into a terminal. It stops net-merge and removes it the way it was
+installed (Homebrew, apt, dnf, zypper, apk, pacman or the download), with its repository and key.
+
+```
+curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh | sh -s -- uninstall
+```
+
+**Windows**: paste this into PowerShell, or use *Settings > Apps > Installed apps > net-merge > Uninstall*.
+
+```
+& "$env:ProgramFiles\net-merge\net-merge.exe" quit; Start-Process "$env:ProgramFiles\net-merge\unins000.exe" '/SILENT' -Verb RunAs -Wait
+```
+
+Your network goes back to normal as soon as net-merge stops: it removes its virtual adapter and routes
+when it quits, and even after a crash.
+
+<details>
+<summary><strong>Rather type the commands yourself?</strong> One block per way you installed it.</summary>
+<br>
+
+Each block first stops the tray and turns off start at sign-in, then removes net-merge.
+
+**Homebrew** (macOS):
+
+```
+net-merge quit; net-merge autostart off; sudo net-merge uninstall; brew uninstall net-merge && brew untap rohit267/tap
+```
+
+**macOS without Homebrew**:
+
+```
+net-merge quit; net-merge autostart off; sudo net-merge uninstall
+```
+
+**Debian, Ubuntu, Linux Mint, Pop!_OS, Raspberry Pi OS** (apt):
+
+```
+net-merge quit; net-merge autostart off; sudo apt remove -y net-merge && sudo rm -f /etc/apt/sources.list.d/net-merge.list /usr/share/keyrings/net-merge.gpg
+```
+
+**Fedora, RHEL, Rocky, Alma** (dnf):
+
+```
+net-merge quit; net-merge autostart off; sudo dnf remove -y net-merge && sudo rm -f /etc/yum.repos.d/net-merge.repo
+```
+
+**openSUSE** (zypper):
+
+```
+net-merge quit; net-merge autostart off; sudo zypper remove -y net-merge && sudo zypper removerepo net-merge
+```
+
+**Arch, Manjaro, EndeavourOS** (pacman):
+
+```
+net-merge quit; net-merge autostart off; sudo pacman -R --noconfirm net-merge && sudo sed -i '/^\[net-merge\]$/,/^Server = .*net-merge/d' /etc/pacman.conf && sudo pacman-key --delete 0168C7AB77721656904811AE904F61E7F4F1C2A1
+```
+
+**Alpine** (apk):
+
+```
+net-merge quit; net-merge autostart off; sudo apk del net-merge && sudo sed -i '\#rohit267.github.io/net-merge/apk#d' /etc/apk/repositories && sudo rm -f /etc/apk/keys/net-merge.rsa.pub
+```
+
+**Homebrew** (Linux):
+
+```
+net-merge quit; net-merge autostart off; brew uninstall net-merge && brew untap rohit267/tap
+```
+
+**Any other Linux** (the download):
+
+```
+net-merge quit; net-merge autostart off; sudo rm -f /usr/local/bin/net-merge
+```
+
+**Windows portable zip**: run `net-merge.exe autostart off` in its folder, quit the tray, then delete the folder.
+
+**NixOS**: remove `programs.net-merge` (and the `net-merge` input) from your configuration and rebuild.
 </details>
 
 ### NixOS
