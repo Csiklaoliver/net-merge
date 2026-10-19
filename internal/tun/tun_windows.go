@@ -182,10 +182,13 @@ func syncStrongHost(stop chan struct{}) {
 		return
 	}
 	// Get-NetIPInterface prints enum names, which unlike netsh's output are not translated.
-	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
+	// HideWindow: without it, every new adapter flashes a PowerShell console (#10).
+	ps := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
 		"Get-NetIPInterface -InterfaceIndex "+strings.Join(idx, ",")+" -ErrorAction SilentlyContinue | "+
 			"Where-Object { $_.WeakHostSend -eq 'Enabled' -or $_.Forwarding -eq 'Enabled' } | "+
-			"ForEach-Object { '{0} {1} {2} {3}' -f $_.AddressFamily, $_.InterfaceIndex, $_.WeakHostSend, $_.Forwarding }").Output()
+			"ForEach-Object { '{0} {1} {2} {3}' -f $_.AddressFamily, $_.InterfaceIndex, $_.WeakHostSend, $_.Forwarding }")
+	ps.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := ps.Output()
 	if err != nil {
 		logx.Printf("warning: could not check the adapters' weak host setting: %v\n", err)
 		return

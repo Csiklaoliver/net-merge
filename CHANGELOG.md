@@ -5,6 +5,10 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Fixed
+- **Windows: no more PowerShell window flashing when a new adapter connects** (#10). The adapter capability
+  check now hides its PowerShell window, the way the other helper commands in `internal/tun` already did.
+
 ## [0.3.1] - 2026-10-19
 
 ### Added
