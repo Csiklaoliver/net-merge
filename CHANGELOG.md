@@ -5,6 +5,8 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-20
+
 ### Added
 - **Start at sign-in from the tray menu** on Windows, macOS and Linux (#28): tick *Start at sign-in*. It
   does what `net-merge autostart on` does, without a terminal. On a Mac it needs `sudo net-merge install` once,
