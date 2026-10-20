@@ -29,7 +29,7 @@
 
 <p align="center">
   <sub>From the same developer: <a href="https://dormhost.dev/?utm_source=net-merge&utm_medium=readme"><strong>DormHost</strong></a>, put your college project
-  online. Node.js, Python or Docker with a database, from ₹99 a month, 30 days free.</sub>
+  online. Node.js, Python or Docker with a database, 30 days free.</sub>
 </p>
 
 <p align="center">
@@ -447,4 +447,4 @@ More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 net-merge is free. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/rohit267) or [donate with PayPal](https://paypal.me/champdev). Thank you!
 
 Building a college project? Host it on [DormHost](https://dormhost.dev/?utm_source=net-merge&utm_medium=readme-support),
-also by me: Node.js, Python or Docker with a database, from ₹99 a month.
+also by me: Node.js, Python or Docker with a database, 30 days free.
