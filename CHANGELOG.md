@@ -5,6 +5,11 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Added
+- **Start at sign-in from the tray menu** on Windows, macOS and Linux (#28): tick *Start at sign-in*. It
+  does what `net-merge autostart on` does, without a terminal. On a Mac it needs `sudo net-merge install` once,
+  as before.
+
 ### Fixed
 - **Windows: fewer antivirus false positives.** `net-merge.exe` and `net-merge-tray.exe` now carry a
   name, version, icon and manifest. Bare unsigned Go programs are what antivirus machine-learning models

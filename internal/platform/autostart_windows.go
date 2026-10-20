@@ -63,7 +63,7 @@ func utf16le(s string) []byte {
 // Autostart turns start-at-sign-in "on" or "off", or prints its "status".
 func Autostart(action string) error {
 	if action == "status" {
-		if run("schtasks", "/Query", "/TN", taskName) == nil {
+		if AutostartEnabled() {
 			fmt.Println("autostart is ON (starts at sign-in, no UAC prompt).")
 		} else {
 			fmt.Println("autostart is OFF.")
@@ -74,15 +74,33 @@ func Autostart(action string) error {
 		return RelaunchElevated([]string{"autostart", action}, false)
 	}
 	if action == "off" {
-		if run("schtasks", "/Query", "/TN", taskName) != nil {
+		if !AutostartEnabled() {
 			fmt.Println("autostart is already OFF.")
 			return nil
 		}
-		if err := run("schtasks", "/Delete", "/F", "/TN", taskName); err != nil {
+		if err := SetAutostart(false); err != nil {
 			return err
 		}
 		fmt.Println("autostart is OFF.")
 		return nil
+	}
+	if err := SetAutostart(true); err != nil {
+		return err
+	}
+	fmt.Println("autostart is ON: net-merge starts at sign-in without a UAC prompt.")
+	return nil
+}
+
+// AutostartEnabled reports whether net-merge starts at sign-in.
+func AutostartEnabled() bool { return run("schtasks", "/Query", "/TN", taskName) == nil }
+
+// SetAutostart adds or removes the sign-in task. It needs admin, which the tray has.
+func SetAutostart(on bool) error {
+	if !on {
+		if !AutostartEnabled() {
+			return nil
+		}
+		return run("schtasks", "/Delete", "/F", "/TN", taskName)
 	}
 	user := os.Getenv("USERNAME")
 	if d := os.Getenv("USERDOMAIN"); d != "" {
@@ -93,11 +111,7 @@ func Autostart(action string) error {
 		return err
 	}
 	defer os.Remove(tmp)
-	if err := run("schtasks", "/Create", "/F", "/TN", taskName, "/XML", tmp); err != nil {
-		return err
-	}
-	fmt.Println("autostart is ON: net-merge starts at sign-in without a UAC prompt.")
-	return nil
+	return run("schtasks", "/Create", "/F", "/TN", taskName, "/XML", tmp)
 }
 
 // HasConsole is false for the windowless tray build and for a double-clicked GUI launch.

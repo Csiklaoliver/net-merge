@@ -73,7 +73,7 @@ irm https://raw.githubusercontent.com/rohit267/net-merge/main/install.ps1 | iex
 
 That's it: net-merge is installed and its icon appears in the menu bar or tray. On Linux the script
 uses your package manager (apt, dnf, zypper, apk or pacman) and on macOS Homebrew when you have it, so
-net-merge updates with the rest of your system. To start it at sign-in: `net-merge autostart on`.
+net-merge updates with the rest of your system. To start it at sign-in, tick *Start at sign-in* in its menu.
 
 <details>
 <summary><strong>Rather type the commands yourself?</strong> One block per system, each ready to paste.</summary>
@@ -301,7 +301,8 @@ net-merge when you do not want that.
 4. **Hover** the icon to see the speed of each connection and the total.
 5. **Right-click** the icon (on Mac, click it) to open the menu. It shows each connection's speed, how
    many connections net-merge gave it, and the buttons *Pause merging* / *Start merging* and *Quit*.
-6. To start it at sign-in: tick the box in the Windows installer, or run `net-merge autostart on`.
+6. To start it at sign-in: tick *Start at sign-in* in the menu (or the box in the Windows installer, or run
+   `net-merge autostart on`). On a Mac this needs `sudo net-merge install` once.
 
 Tips:
 - Torrent clients already use every connection. Leave qBittorrent's network interface on *Any interface*.

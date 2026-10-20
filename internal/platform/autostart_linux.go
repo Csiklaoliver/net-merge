@@ -45,24 +45,56 @@ func Autostart(action string) error {
 	if err != nil {
 		return err
 	}
-	_, statErr := os.Stat(path)
 	switch action {
 	case "status":
-		if statErr == nil {
+		if AutostartEnabled() {
 			fmt.Println("autostart is ON (" + path + ").")
 		} else {
 			fmt.Println("autostart is OFF.")
 		}
 		return nil
 	case "off":
-		if statErr != nil {
+		if !AutostartEnabled() {
 			fmt.Println("autostart is already OFF.")
 			return nil
 		}
-		if err := os.Remove(path); err != nil {
+		if err := SetAutostart(false); err != nil {
 			return err
 		}
 		fmt.Println("autostart is OFF.")
+		return nil
+	}
+	if err := SetAutostart(true); err != nil {
+		return err
+	}
+	fmt.Println("autostart is ON: net-merge starts at sign-in (" + path + ").")
+	if !IsAdmin() {
+		fmt.Println("note: the tray needs CAP_NET_ADMIN to start merging; see `net-merge tray` or the README.")
+	}
+	return nil
+}
+
+// AutostartEnabled reports whether net-merge starts at sign-in.
+func AutostartEnabled() bool {
+	path, err := autostartFile()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(path)
+	return err == nil
+}
+
+// SetAutostart writes or removes the autostart entry. The tray runs as the signed-in user (with
+// CAP_NET_ADMIN), so that user's config directory is the right one.
+func SetAutostart(on bool) error {
+	path, err := autostartFile()
+	if err != nil {
+		return err
+	}
+	if !on {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -75,12 +107,5 @@ func Autostart(action string) error {
 		"Exec=" + desktopQuote(trayExe()) + " tray\n" +
 		"Terminal=false\n" +
 		"X-GNOME-Autostart-enabled=true\n"
-	if err := os.WriteFile(path, []byte(entry), 0o644); err != nil {
-		return err
-	}
-	fmt.Println("autostart is ON: net-merge starts at sign-in (" + path + ").")
-	if !IsAdmin() {
-		fmt.Println("note: the tray needs CAP_NET_ADMIN to start merging; see `net-merge tray` or the README.")
-	}
-	return nil
+	return os.WriteFile(path, []byte(entry), 0o644)
 }
