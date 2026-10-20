@@ -19,5 +19,7 @@ $install += "`n`n**macOS:** download ``net-merge-$Version-macos-universal.tar.gz
     "for your CPU, or a ``.deb`` / ``.rpm`` / ``.apk`` / ``.pkg.tar.zst``. The steps are in the Install section of the README."
 # UTF-8 without a BOM (Windows PowerShell's -Encoding utf8 adds one, which GitHub would show)
 $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Out)
-[IO.File]::WriteAllText($path, $install + "`n`n" + $m.Groups[1].Value.Trim() + "`n", (New-Object Text.UTF8Encoding $false))
+$footer = "---`n**From the same developer:** [DormHost](https://dormhost.dev/?utm_source=net-merge&utm_medium=release), " +
+    "put your college project online. Node.js, Python or Docker with a database, from $([char]0x20B9)99 a month."
+[IO.File]::WriteAllText($path, $install + "`n`n" + $m.Groups[1].Value.Trim() + "`n`n" + $footer + "`n", (New-Object Text.UTF8Encoding $false))
 Write-Host "wrote $Out"

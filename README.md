@@ -28,6 +28,11 @@
 </p>
 
 <p align="center">
+  <sub>From the same developer: <a href="https://dormhost.dev/?utm_source=net-merge&utm_medium=readme"><strong>DormHost</strong></a>, put your college project
+  online. Node.js, Python or Docker with a database, from ₹99 a month, 30 days free.</sub>
+</p>
+
+<p align="center">
   <img src="docs/demo.gif" width="600" alt="Speed test on a Mac with Wi-Fi and an Android phone: the net-merge menu shows both connections carrying traffic, and the download reaches about 326 Mbit/s">
   <br>
   <sub>A Mac with Wi-Fi + an Android phone. The menu shows both connections working at once. <a href="docs/demo.mp4">Watch the full 45-second video.</a></sub>
@@ -440,3 +445,6 @@ More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 ## Support
 
 net-merge is free. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/rohit267) or [donate with PayPal](https://paypal.me/champdev). Thank you!
+
+Building a college project? Host it on [DormHost](https://dormhost.dev/?utm_source=net-merge&utm_medium=readme-support),
+also by me: Node.js, Python or Docker with a database, from ₹99 a month.
