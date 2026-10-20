@@ -51,7 +51,8 @@ spread over all your links.
 - **Good for:** Steam and game downloads, browsers, system updates, cloud uploads (Google Drive),
   download managers like IDM, torrents.
 - **Not for:** one single connection. One connection always uses one link, so one big file from one
-  connection does not get faster.
+  connection does not get faster. Browsers can split a download into several connections; see the tip
+  under [Use it](#use-it).
 - **Works for every app**, TCP and UDP, IPv4 and IPv6. You do not set up a proxy.
 - **Smart:** faster links get more connections. A link with no internet gets none until it works again.
 - **Safe:** if net-merge crashes, your internet keeps working.
@@ -306,6 +307,15 @@ net-merge when you do not want that.
 
 Tips:
 - Torrent clients already use every connection. Leave qBittorrent's network interface on *Any interface*.
+- **Faster browser downloads.** A browser downloads a file over one connection, so it uses one link. Chrome,
+  Edge, Brave and other Chromium browsers can split it over several connections instead:
+  1. Open `chrome://flags/#enable-parallel-downloading` (Edge: `edge://flags/#enable-parallel-downloading`,
+     Brave: `brave://flags/#enable-parallel-downloading`).
+  2. Set *Parallel downloading* to *Enabled* and click *Relaunch*.
+
+  Firefox has no such setting; for big files use a download manager, for example `aria2c -x 8 -s 8 <link>`.
+  Splitting only helps when the server allows downloading parts of a file, which most large download
+  sites do.
 - Leave *Use all adapters (IPv6 only if every adapter has it)* ticked. Untick it only if you must reach a
   site that only has IPv6.
 - `net-merge list` shows which connections are used and why others are skipped. `net-merge status`
