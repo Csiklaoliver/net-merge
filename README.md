@@ -82,6 +82,9 @@ curl -fsSL https://raw.githubusercontent.com/rohit267/net-merge/main/install.sh 
 irm https://raw.githubusercontent.com/rohit267/net-merge/main/install.ps1 | iex
 ```
 
+Antivirus blocked it? Download [net-merge-setup.exe](https://github.com/rohit267/net-merge/releases/latest/download/net-merge-setup.exe)
+and double-click it instead.
+
 That's it: net-merge is installed and its icon appears in the menu bar or tray. On Linux the script
 uses your package manager (apt, dnf, zypper, apk or pacman) and on macOS Homebrew when you have it, so
 net-merge updates with the rest of your system. To start it at sign-in, tick *Start at sign-in* in its menu.
