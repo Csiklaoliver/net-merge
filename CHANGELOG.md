@@ -5,6 +5,11 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Fixed
+- **Windows: fewer antivirus false positives.** `net-merge.exe` and `net-merge-tray.exe` now carry a
+  name, version, icon and manifest. Bare unsigned Go programs are what antivirus machine-learning models
+  flag (Microsoft Defender's `Trojan:Win32/Wacatac.B!ml` on VirusTotal).
+
 ## [0.3.2] - 2026-10-19
 
 ### Fixed

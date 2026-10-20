@@ -2,3 +2,4 @@
 wintun.dll
 dist/
 result
+*.syso

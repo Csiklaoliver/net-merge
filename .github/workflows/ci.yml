@@ -100,10 +100,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - run: choco install innosetup --no-progress -y
+      # The release build itself, so the smoke test runs the exe that ships.
       - shell: pwsh
         run: |
-          scripts/fetch-wintun.ps1 -OutDir dist
-          go build -o dist/net-merge.exe ./cmd/net-merge
+          scripts/build.ps1
+          if ((Get-Item dist\net-merge-tray.exe).VersionInfo.ProductName -ne 'net-merge') { throw 'net-merge-tray.exe has no version info' }
           go build -o dist/winfakeup.exe ./scripts/winfakeup
           scripts/windows-smoke.ps1 dist\net-merge.exe
 

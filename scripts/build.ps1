@@ -22,9 +22,18 @@ New-Item -ItemType Directory dist | Out-Null
 Invoke-Native 'go vet'  { go vet ./... }
 Invoke-Native 'go test' { go test ./... }
 
+# Version info, icon and manifest for each exe: antivirus ML models flag bare unsigned Go exes
+# (Microsoft's Trojan:Win32/Wacatac.B!ml).
+function New-Resources([string]$Exe, [string]$Description) {
+    Invoke-Native "resources $Exe" { go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --out cmd\net-merge\rsrc --icon packaging\icons\hicolor\256x256\apps\net-merge.png --manifest cli --product-name net-merge --file-description $Description --original-filename $Exe --product-version $Version --file-version $Version --copyright 'net-merge contributors' }
+}
+
 # One source, two exes: a console CLI, and a windowless build that defaults to the tray.
+New-Resources 'net-merge.exe' 'net-merge'
 Invoke-Native 'build cli'  { go build -trimpath -ldflags "-s -w -X main.version=$Version" -o dist\net-merge.exe .\cmd\net-merge }
+New-Resources 'net-merge-tray.exe' 'net-merge tray'
 Invoke-Native 'build tray' { go build -trimpath -ldflags "-s -w -H=windowsgui -X main.defaultCmd=tray -X main.version=$Version" -o dist\net-merge-tray.exe .\cmd\net-merge }
+Remove-Item cmd\net-merge\rsrc_windows_amd64.syso
 Invoke-Native 'icon' { .\dist\net-merge.exe _icon dist\net-merge.ico }
 
 & "$PSScriptRoot\fetch-wintun.ps1" -OutDir dist
