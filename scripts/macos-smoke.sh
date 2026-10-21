@@ -75,7 +75,9 @@ sudo "$BIN" run -state-dir "$STATE" -log "$STATE-2.log" -stats 0 -for 120s &
 wait_on || fail "second start did not turn on"
 pid=$(jq -r .PID "$STATE/status.json" 2>/dev/null)
 sudo kill -9 "$pid"
-sleep 1
+for _ in 1 2 3 4 5 6 7 8 9 10; do   # the kernel drops the utun once the killed process is gone
+    [ "$(captured)" = 0 ] && break; sleep 1
+done
 [ "$(captured)" = 0 ] && pass "capture routes gone after kill -9" || fail "capture routes survived kill -9"
 [ "$(http)" = 200 ] && pass "internet works after kill -9" || fail "internet after kill -9 failed"
 sudo "$BIN" cleanup >/dev/null

@@ -176,7 +176,11 @@ jobs:
         run: |
           docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW opensuse/tumbleweed bash -ec '
             zypper --non-interactive addrepo http://localhost:8000/rpm/net-merge.repo
-            zypper --non-interactive --gpg-auto-import-keys refresh
+            # the openSUSE mirrors time out now and then: retry before calling it a failure
+            for i in 1 2 3; do
+              zypper --non-interactive --gpg-auto-import-keys refresh && break
+              [ $i = 3 ] && exit 1; sleep 15
+            done
             zypper --non-interactive install net-merge
             rpm -q net-merge
             net-merge version'
