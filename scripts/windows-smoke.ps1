@@ -24,9 +24,14 @@ function Pinned([string]$src, [int]$idx) {
     } catch { return $false } finally { $s.Close() }
 }
 
-$nic = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway } | Select-Object -First 1
-$ip = $nic.IPv4Address.IPAddress; $idx = $nic.InterfaceIndex
-Write-Host "== real adapter: $($nic.InterfaceAlias) $ip (index $idx)"
+# The adapter with the default route. Not Get-NetIPConfiguration: it sometimes throws on the runners
+# ("Exception setting NetAdapter"), which left $idx empty and the weak host checks testing nothing.
+$route = Get-NetRoute -AddressFamily IPv4 -DestinationPrefix 0.0.0.0/0 -PolicyStore ActiveStore |
+    Sort-Object { $_.RouteMetric + $_.InterfaceMetric } | Select-Object -First 1
+$idx = $route.InterfaceIndex
+$ip = (Get-NetIPAddress -InterfaceIndex $idx -AddressFamily IPv4 | Select-Object -First 1).IPAddress
+if (-not $idx -or -not $ip) { throw 'no adapter with an IPv4 default route' }
+Write-Host "== real adapter: $($route.InterfaceAlias) $ip (index $idx)"
 & $Bin list
 Write-Host ("   pinned connects before: bind+if {0}, bind {1}, if {2}" -f (Pinned $ip $idx), (Pinned $ip 0), (Pinned '' $idx))
 
@@ -90,7 +95,7 @@ route print -4 | Select-String ' 0.0.0.0 '
 Write-Host ("   secondary, net-merge off: bind+if {0}, bind {1}, if {2}" -f (Pinned $ip $idx), (Pinned $ip 0), (Pinned '' $idx))
 Remove-Item -Recurse -Force "$state-2" -ErrorAction SilentlyContinue
 # one string: Start-Process does not quote list items, and the adapter name has a space
-$p2 = Start-Process $Bin -ArgumentList "run -include `"$($nic.InterfaceAlias)`" -state-dir `"$state-2`" -log `"$state-2\net-merge.log`" -stats 0 -for 40s" -PassThru -WindowStyle Hidden
+$p2 = Start-Process $Bin -ArgumentList "run -include `"$($route.InterfaceAlias)`" -state-dir `"$state-2`" -log `"$state-2\net-merge.log`" -stats 0 -for 40s" -PassThru -WindowStyle Hidden
 for ($i = 0; $i -lt 60 -and -not ((& $Bin status -state-dir "$state-2" 2>$null | Out-String) -match 'is ON'); $i++) { Start-Sleep -Milliseconds 500 }
 Start-Sleep 6
 $status2 = & $Bin status -state-dir "$state-2" | Out-String
