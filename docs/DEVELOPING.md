@@ -33,7 +33,7 @@ Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters)
   the machine, so the links' 1500 doesn't apply, and bigger packets cost far less CPU: measured about
   3x less CPU per Mbit/s than at 1500 (0.18 vs 0.54 cores per 100 Mbit/s). `-mtu` changes it.
 - Adapters are detected automatically and re-scanned every 3 s. Only real hardware with a default route
-  is used (on Linux: interfaces backed by a device in sysfs, with a default route in any routing table; on macOS: `enN` interfaces, and TetherKit's `fethN`, with a default route): tunnels, VPNs (Tailscale, WireGuard, ...), virtual switches and LAN-only adapters are skipped
+  is used (on Linux: interfaces backed by a device in sysfs, with a default route in any routing table; on macOS: `enN` interfaces and TetherKit's `fethN`, with a default route): tunnels, VPNs (Tailscale, WireGuard, ...), virtual switches and LAN-only adapters are skipped
   (`net-merge list` shows why).
 - Each adapter and each address family is probed for real internet access. A tether with no data or a
   captive-portal Wi-Fi gets no flows; a recovered link rejoins within seconds.
