@@ -94,6 +94,10 @@ That's it: net-merge is installed and its icon appears in the menu bar or tray. 
 uses your package manager (apt, dnf, zypper, apk or pacman) and on macOS Homebrew when you have it, so
 net-merge updates with the rest of your system. To start it at sign-in, tick *Start at sign-in* in its menu.
 
+> **Want to choose the connection for each app?** [RoutEngine](https://github.com/champdev-me/routengine) is the
+> upgraded commercial version of net-merge, for Windows. Pick an adapter per app, add a fallback, and set a speed
+> limit or data cap per app. Free for personal use, Pro for work.
+
 <details>
 <summary><strong>Rather type the commands yourself?</strong> One block per system, each ready to paste.</summary>
 <br>
