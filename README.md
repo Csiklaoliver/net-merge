@@ -38,6 +38,11 @@
 </p>
 
 <p align="center">
+  <strong>Need more control? Try <a href="https://routengine.net/?utm_source=net-merge&utm_medium=readme">RoutEngine</a>, the upgraded commercial version of net-merge.</strong><br>
+  Choose the connection for each app, add a fallback, and set a speed limit or data cap per app. Windows. Free for personal use, Pro for work.
+</p>
+
+<p align="center">
   <img src="docs/demo.gif" width="600" alt="Speed test on a Mac with Wi-Fi and an Android phone: the net-merge menu shows both connections carrying traffic, and the download reaches about 326 Mbit/s">
   <br>
   <sub>A Mac with Wi-Fi + an Android phone. The menu shows both connections working at once. <a href="docs/demo.mp4">Watch the full 45-second video.</a></sub>
