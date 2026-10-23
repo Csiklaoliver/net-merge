@@ -361,6 +361,19 @@ download managers) are what speed up. Run `net-merge status` to see how many con
 </details>
 
 <details>
+<summary><strong>It does nothing while a VPN is on</strong></summary>
+<br>
+
+A VPN app on your computer (ProtonVPN, NordVPN and others) sends all your internet through itself.
+net-merge then has nothing to share, so nothing gets faster. Using the VPN on only one link is not
+safe either: anything sent over the other link skips the VPN.
+
+Fix: set up the VPN on your routers instead, and turn the VPN app off on the computer. Most VPN
+providers have a guide for routers. net-merge then works as normal, and all your traffic still goes
+through the VPN.
+</details>
+
+<details>
 <summary><strong>A connection does not show up</strong></summary>
 <br>
 
@@ -458,6 +471,7 @@ More flags and details are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 ## More
 
 - What changed in each version: [CHANGELOG.md](CHANGELOG.md)
+- New versions come out once a week when something changed. Important fixes come out right away.
 - How it works, building from source, tests: [docs/DEVELOPING.md](docs/DEVELOPING.md)
 - Want to help? [CONTRIBUTING.md](CONTRIBUTING.md). Found a security problem? [SECURITY.md](SECURITY.md)
 - License: MIT, see `LICENSE`. Third-party parts: `THIRD-PARTY-NOTICES.md`.
