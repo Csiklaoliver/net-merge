@@ -16,14 +16,15 @@ import (
 	"net-merge/internal/platform"
 	"net-merge/internal/state"
 	"net-merge/internal/tun"
+	"net-merge/internal/update"
 )
 
 const trayRows = 4 // adapters shown in the menu; extra rows stay hidden
 
 // Run shows the tray icon and blocks until Quit, and closes ready once the icon exists. With
 // startOn it merges as soon as it can (at once, or, with autoPause, once two connections work).
-func Run(t *tun.Tun, sched *engine.Scheduler, bal *engine.Balancer, stateDir string, startOn, autoPause bool, ready chan struct{}) {
-	ui := &trayUI{tun: t, sched: sched, bal: bal, stateDir: stateDir, startOn: startOn,
+func Run(t *tun.Tun, sched *engine.Scheduler, bal *engine.Balancer, stateDir, version string, startOn, autoPause bool, ready chan struct{}) {
+	ui := &trayUI{tun: t, sched: sched, bal: bal, stateDir: stateDir, version: version, startOn: startOn,
 		iconOn: icon.Tray(true), iconOff: icon.Tray(false), ready: ready}
 	ui.ap.enabled = autoPause
 	exit := func() { t.Close(); state.Clear(stateDir) }
@@ -36,6 +37,7 @@ type trayUI struct {
 	bal      *engine.Balancer
 	sched    *engine.Scheduler
 	stateDir string
+	version  string
 	startOn  bool
 	iconOn   []byte
 	iconOff  []byte
@@ -44,6 +46,7 @@ type trayUI struct {
 	ap autoPauser
 
 	header, toggleItem, v6Item, autoItem, signInItem *systray.MenuItem
+	versionItem                                      *systray.MenuItem
 	rows                                             []*systray.MenuItem
 	lastOn                                           *bool
 	lastHeader                                       string
@@ -73,7 +76,9 @@ func (u *trayUI) onReady() {
 	u.autoItem = systray.AddMenuItemCheckbox("Pause when there is only one connection", "Pauses merging by itself when fewer than two connections have internet, and starts it again when a second one works. Pausing or starting by hand always wins.", u.ap.enabled)
 	u.signInItem = systray.AddMenuItemCheckbox("Start at sign-in", "Starts net-merge when you sign in, with no password or admin prompt.", platform.AutostartEnabled())
 	u.toggleItem = systray.AddMenuItem("Start merging", "")
+	u.versionItem = systray.AddMenuItem(versionLabel(u.version), "The version of net-merge that is running (the same as net-merge version). Click to open the release page on GitHub.")
 	quit := systray.AddMenuItem("Quit", "Turns system-wide mode off and exits")
+	go u.watchUpdates()
 
 	go func() {
 		u.ap.start(u.startOn)
@@ -120,6 +125,10 @@ func (u *trayUI) onReady() {
 				} else {
 					u.v6Item.Check()
 					u.bal.SetV6Mode(engine.V6Auto)
+				}
+			case <-u.versionItem.ClickedCh:
+				if err := platform.OpenURL(update.ReleasesURL); err != nil {
+					logx.Printf("error: opening the release page: %v\n", err)
 				}
 			case <-quit.ClickedCh:
 				systray.Quit()
@@ -279,6 +288,26 @@ func stateWord(on bool) string {
 		return "Merging"
 	}
 	return "Paused"
+}
+
+// versionLabel is the line above Quit, so a bug report has the version without a terminal.
+// Release builds pass "0.3.3" and get "v0.3.3"; a build from source says "dev".
+func versionLabel(v string) string {
+	if v = strings.TrimSpace(v); v == "" {
+		v = "dev"
+	}
+	return withV(v)
+}
+
+// updateLabel replaces the version line once GitHub has a newer release.
+func updateLabel(latest string) string { return "Update to " + withV(latest) }
+
+// withV adds the "v" that releases are tagged with, unless the build says "dev" or has one already.
+func withV(v string) string {
+	if v == "" || v == "dev" || strings.HasPrefix(v, "v") {
+		return v
+	}
+	return "v" + v
 }
 
 // trayTooltip lists each adapter's speed and a Total line, e.g.

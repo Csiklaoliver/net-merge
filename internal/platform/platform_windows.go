@@ -3,8 +3,10 @@ package platform
 import (
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/windows"
 )
@@ -60,4 +62,21 @@ func RelaunchElevated(args []string, hidden bool) error {
 		show = windows.SW_HIDE
 	}
 	return windows.ShellExecute(0, verb, file, params, dir, show)
+}
+
+// OpenURL shows url in the default browser. explorer.exe hands it to the shell, which runs as the
+// signed-in user: the tray is elevated, and a browser started from there would be elevated too and
+// could not reach the browser that is already open. DETACHED_PROCESS keeps it off our console, which
+// would otherwise make a console window appear next to the tray.
+func OpenURL(url string) error {
+	cmd := exec.Command("explorer.exe", url)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: windows.DETACHED_PROCESS | windows.CREATE_NEW_PROCESS_GROUP,
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait() // explorer exits at once, but reap it either way
+	return nil
 }

@@ -136,3 +136,13 @@ func CheckDriver() error {
 // WaitForTray is a no-op on Linux: the tray library registers with the desktop's
 // StatusNotifierWatcher over D-Bus whenever it is available.
 func WaitForTray(max time.Duration) bool { return true }
+
+// OpenURL shows url in the default browser.
+func OpenURL(url string) error {
+	cmd := exec.Command("xdg-open", url)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait()
+	return nil
+}

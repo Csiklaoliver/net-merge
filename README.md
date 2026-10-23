@@ -323,7 +323,10 @@ net-merge when you do not want that.
    `net-merge tray -auto-pause=false`.
 4. **Hover** the icon to see the speed of each connection and the total.
 5. **Right-click** the icon (on Mac, click it) to open the menu. It shows each connection's speed, how
-   many connections net-merge gave it, and the buttons *Pause merging* / *Start merging* and *Quit*.
+   many connections net-merge gave it, and the buttons *Pause merging* / *Start merging* and *Quit*. The
+   line above *Quit* is the version you are running, like `v0.3.3`. It reads the newest release number
+   from GitHub (at start, and again every 6 hours) and turns into *Update to v0.3.4* if there is one;
+   click it to open the release page.
 6. To start it at sign-in: tick *Start at sign-in* in the menu (or the box in the Windows installer, or run
    `net-merge autostart on`). On a Mac this needs `sudo net-merge install` once.
 

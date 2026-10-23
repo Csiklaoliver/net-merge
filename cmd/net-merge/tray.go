@@ -89,5 +89,5 @@ func cmdTray(args []string) {
 		state.Clear(c.stateDir)
 		os.Exit(0)
 	}()
-	tray.Run(t, sched, bal, c.stateDir, !*startOff, *autoPause, ready)
+	tray.Run(t, sched, bal, c.stateDir, version, !*startOff, *autoPause, ready)
 }

@@ -130,3 +130,19 @@ func CheckDriver() error { return nil }
 
 // WaitForTray is a no-op: the menu bar exists as soon as the login session does.
 func WaitForTray(max time.Duration) bool { return true }
+
+// OpenURL shows url in the default browser. The tray runs as root (see autostart_darwin.go), and root
+// has no GUI session of its own, so when sudo tells us who signed in, hand the URL to that user.
+func OpenURL(url string) error {
+	if u, err := signInUser(); err == nil {
+		if exec.Command("/bin/launchctl", "asuser", u.Uid, "open", url).Run() == nil {
+			return nil
+		}
+	}
+	cmd := exec.Command("open", url)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait()
+	return nil
+}
