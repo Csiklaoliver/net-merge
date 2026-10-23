@@ -38,7 +38,7 @@
 </p>
 
 <p align="center">
-  <strong>Need more control? Try <a href="https://routengine.net/?utm_source=net-merge&utm_medium=readme">RoutEngine</a>, the upgraded commercial version of net-merge.</strong><br>
+  <strong>Need more control? Try <a href="https://github.com/champdev-me/routengine">RoutEngine</a>, the upgraded commercial version of net-merge.</strong><br>
   Choose the connection for each app, add a fallback, and set a speed limit or data cap per app. Windows. Free for personal use, Pro for work.
 </p>
 
