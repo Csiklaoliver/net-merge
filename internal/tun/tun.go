@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,12 +23,11 @@ import (
 	"github.com/xjasonlyu/tun2socks/v2/tunnel"
 
 	"net-merge/internal/engine"
+	"net-merge/internal/logx"
 )
 
 const (
 	tunName = "net-merge"
-	tunIP   = "198.18.0.1"
-	tunMask = "255.255.255.0"
 	// A ULA on purpose. The OS's source-address policy (RFC 6724, on Windows and in glibc) prefers
 	// IPv4 over IPv6 when the only IPv6 source on the route is a ULA, so dual-stack sites go over
 	// IPv4 and spread across every adapter, while IPv6-only sites (and explicit IPv6) still work
@@ -35,6 +36,73 @@ const (
 	// this address.
 	tunIP6 = "fd6e:6d65:7267::1"
 )
+
+// tunRange is where the adapter's IPv4 subnet comes from. 198.18.0.0/15 is reserved for benchmarks
+// (RFC 2544), so no real network uses it, but other TUN apps (Clash, sing-box, v2rayN) like it too,
+// and Windows refuses an address another adapter already has (#43). So On picks a free /24 in it.
+var tunRange = netip.MustParsePrefix("198.18.0.0/15")
+
+// pickNet returns the adapter's address and subnet: .1 of the first /24 in tunRange that overlaps none
+// of used, or else of the first whose .1 nobody holds (sitting inside another app's bigger subnet
+// works, a duplicate address does not).
+func pickNet(used []netip.Prefix) netip.Prefix {
+	var spare netip.Prefix
+	for i := range 1 << (24 - tunRange.Bits()) {
+		b := tunRange.Addr().As4()
+		b[1] += byte(i >> 8)
+		b[2], b[3] = byte(i), 1
+		p := netip.PrefixFrom(netip.AddrFrom4(b), 24)
+		free, held := true, false
+		for _, u := range used {
+			free = free && !p.Overlaps(u)
+			held = held || u.Addr() == p.Addr()
+		}
+		if free {
+			return p
+		}
+		if !held && !spare.IsValid() {
+			spare = p
+		}
+	}
+	if spare.IsValid() {
+		return spare
+	}
+	return netip.PrefixFrom(tunRange.Addr().Next(), 24)
+}
+
+// usedNets lists the IPv4 subnets of every adapter except ours (skip).
+func usedNets(skip string) []netip.Prefix {
+	ifs, _ := net.Interfaces()
+	var out []netip.Prefix
+	for _, ifc := range ifs {
+		if ifc.Name == skip {
+			continue
+		}
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			n, ok := a.(*net.IPNet)
+			if !ok || n.IP.To4() == nil {
+				continue
+			}
+			ones, bits := n.Mask.Size()
+			if bits == 128 {
+				ones -= 96
+			}
+			out = append(out, netip.PrefixFrom(netip.AddrFrom4([4]byte(n.IP.To4())), ones))
+		}
+	}
+	return out
+}
+
+// cmdError puts the tool's own message first. The tray shows only an error's first 70 characters,
+// and with the command line first that was all command and no reason (#43).
+func cmdError(name string, args []string, err error, out []byte) error {
+	cmdline := name + " " + strings.Join(args, " ")
+	if msg := strings.Join(strings.Fields(string(out)), " "); msg != "" {
+		return fmt.Errorf("%s (%s: %v)", msg, cmdline, err)
+	}
+	return fmt.Errorf("%s: %v", cmdline, err)
+}
 
 // openName is what the OS is asked to call the adapter; macOS only accepts "utunN" and picks the number.
 var openName = tunName
@@ -159,7 +227,11 @@ func (t *Tun) On() (err error) {
 	}()
 	tunnel.T().SetProxy(tunProxy{t.B})
 
-	if t.idx, err = configure(t.dev.Name(), t.MTU); err != nil {
+	ip4 := pickNet(usedNets(t.dev.Name()))
+	if ip4.Addr() != tunRange.Addr().Next() {
+		logx.Printf("note: another adapter is on %s, using %s\n", netip.PrefixFrom(tunRange.Addr(), 24), ip4)
+	}
+	if t.idx, err = configure(t.dev.Name(), t.MTU, ip4); err != nil {
 		return err
 	}
 	t.on = true

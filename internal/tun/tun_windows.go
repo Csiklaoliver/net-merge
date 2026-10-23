@@ -3,6 +3,7 @@ package tun
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,24 +35,30 @@ func init() {
 }
 
 // configure gives the new adapter its addresses, MTU and routes, and returns its index.
-func configure(name string, mtu int) (int, error) {
-	if err := run("netsh", "interface", "ipv4", "set", "address", "name="+name, "source=static",
-		"address="+tunIP, "mask="+tunMask, "store=active"); err != nil {
-		return 0, err
-	}
+func configure(name string, mtu int, ip4 netip.Prefix) (int, error) {
 	ifc, err := waitIface(name, 5*time.Second)
 	if err != nil {
 		return 0, err
 	}
-	// Windows now and then drops an address set the moment the adapter appears, and without it
-	// nothing routed into the adapter can be sent (all traffic dies), so make sure it stuck.
-	for try := 1; !hasAddr(ifc, tunIP); try++ {
+	idx := strconv.Itoa(ifc.Index)
+	addr, mask := ip4.Addr().String(), net.IP(net.CIDRMask(ip4.Bits(), 32)).String()
+	// By index: netsh can know the adapter a moment before it knows its name.
+	setAddr := func() error {
+		return run("netsh", "interface", "ipv4", "set", "address", "name="+idx, "source=static",
+			"address="+addr, "mask="+mask, "store=active")
+	}
+	err = setAddr()
+	// Windows now and then refuses or drops an address set the moment the adapter appears, and
+	// without it nothing routed into the adapter can be sent (all traffic dies), so make sure it stuck.
+	for try := 1; !hasAddr(ifc, addr); try++ {
 		if try > 20 {
-			return ifc.Index, fmt.Errorf("adapter %q did not keep its address %s", name, tunIP)
+			if err == nil {
+				err = fmt.Errorf("adapter %q did not keep its address %s", name, addr)
+			}
+			return ifc.Index, err
 		}
 		if try%4 == 0 {
-			run("netsh", "interface", "ipv4", "set", "address", "name="+name, "source=static",
-				"address="+tunIP, "mask="+tunMask, "store=active")
+			err = setAddr()
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
@@ -59,7 +66,6 @@ func configure(name string, mtu int) (int, error) {
 	startStrongHost(ifc.Index)
 	// Windows gives Wintun adapters an MTU of 65535. Match the stack's MTU, so Windows sizes TCP
 	// segments to it and fragments bigger UDP datagrams instead of sending packets the stack drops.
-	idx := strconv.Itoa(ifc.Index)
 	mtuArg := "mtu=" + strconv.Itoa(mtu)
 	if e := run("netsh", "interface", "ipv4", "set", "subinterface", "interface="+idx, mtuArg, "store=active"); e != nil {
 		logx.Printf("warning: could not set IPv4 MTU: %v\n", e)
@@ -100,7 +106,7 @@ func run(name string, args ...string) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s %s: %v: %s", name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		return cmdError(name, args, err, out)
 	}
 	return nil
 }

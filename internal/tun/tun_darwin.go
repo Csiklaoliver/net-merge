@@ -3,6 +3,7 @@ package tun
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -24,7 +25,7 @@ func init() {
 
 // configure gives the new utun its addresses and capture routes, and returns its index.
 // ponytail: shells out to ifconfig/route (once per on/off); PF_ROUTE messages if that ever matters.
-func configure(name string, _ int) (int, error) {
+func configure(name string, _ int, ip4 netip.Prefix) (int, error) {
 	ifc, err := net.InterfaceByName(name)
 	if err != nil {
 		return 0, fmt.Errorf("adapter %q did not appear: %w", name, err)
@@ -33,7 +34,8 @@ func configure(name string, _ int) (int, error) {
 	if err := startScopedSync(); err != nil {
 		return ifc.Index, err
 	}
-	if err := run("/sbin/ifconfig", name, "inet", tunIP, tunIP, "up"); err != nil {
+	addr := ip4.Addr().String()
+	if err := run("/sbin/ifconfig", name, "inet", addr, addr, "up"); err != nil {
 		return ifc.Index, err
 	}
 	for _, dst := range routes4 {
@@ -73,7 +75,7 @@ func delRoutes(idx int) {
 func run(name string, args ...string) error {
 	out, err := exec.Command(name, args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		return cmdError(name, args, err, out)
 	}
 	return nil
 }

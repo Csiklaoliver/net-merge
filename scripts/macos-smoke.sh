@@ -36,8 +36,8 @@ sleep 4 # let the internet probes finish
 "$BIN" status -state-dir "$STATE"
 
 [ "$(captured)" = 2 ] && pass "capture routes 0/1 + 128.0/1 present" || fail "capture routes: $(captured), want 2"
-tun=$(ifconfig -l | tr ' ' '\n' | grep '^utun' | while read -r i; do ifconfig "$i" | grep -q 'inet 198.18.0.1' && echo "$i"; done)
-[ -n "$tun" ] && pass "utun $tun has 198.18.0.1" || fail "no utun with 198.18.0.1"
+tun=$(ifconfig -l | tr ' ' '\n' | grep '^utun' | while read -r i; do ifconfig "$i" | grep -qE 'inet 198\.1[89]\.[0-9]+\.1 ' && echo "$i"; done)
+[ -n "$tun" ] && pass "utun $tun has an address in 198.18.0.0/15" || fail "no utun with an address in 198.18.0.0/15"
 mtu=$(ifconfig "$tun" 2>/dev/null | sed -n 's/.*mtu \([0-9]*\).*/\1/p')
 [ "$mtu" = 9000 ] && pass "TUN MTU is 9000" || fail "TUN MTU is $mtu, want 9000"
 [ "$(http)" = 200 ] && pass "HTTPS works through net-merge" || fail "HTTPS through net-merge failed"

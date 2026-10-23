@@ -11,6 +11,15 @@ entry here before pushing a version tag.
   then every 6 hours, and turns into *Update to v0.3.4* when there is one; click it to open the release
   page.
 
+### Fixed
+- **net-merge no longer fails to turn on when another app already uses its address** (#43). The
+  adapter used to always take `198.18.0.1`, which VPN and proxy apps such as Clash, sing-box and v2rayN
+  often use as well. It now picks a free range at start.
+- **Turning on is more reliable on Windows.** net-merge now waits for its adapter to appear before giving
+  it an address, and tries again if the first attempt fails.
+- **Errors in the tray now show the reason.** The menu has room for only the start of an error, and that
+  used to be taken up by the command that failed, so the reason never showed (#43).
+
 ## [0.3.3] - 2026-10-20
 
 ### Added

@@ -31,6 +31,7 @@ cleanup() {
     sudo ip netns del nmup 2>/dev/null
     sudo ip link del nmup-h 2>/dev/null
     sudo ip link del nmgw-h 2>/dev/null
+    sudo ip link del nmclash 2>/dev/null
     sudo ip rule del iif nmgw-h lookup 100 2>/dev/null
     sudo ip route flush table 100 2>/dev/null
     sudo iptables -t nat -D POSTROUTING -s 10.88.0.0/24 -o "$REAL" -j MASQUERADE 2>/dev/null
@@ -89,6 +90,9 @@ ip=$(curl -4 -s --max-time 10 --interface nmup-h https://api.ipify.org) &&
 echo "== adapter detection (the veth is virtual, so it is used only via -include)"
 "$BIN" list
 
+# Another TUN app (Clash, sing-box) on net-merge's default address: it must pick another range (#43).
+sudo ip link add nmclash type dummy && sudo ip addr add 198.18.0.1/30 dev nmclash && sudo ip link set nmclash up
+
 if command -v dig >/dev/null; then
     echo "== DNS over UDP without net-merge (baseline): 1.1.1.1 $(dns_answers 1.1.1.1)/12, 8.8.8.8 $(dns_answers 8.8.8.8)/12, 9.9.9.9 $(dns_answers 9.9.9.9)/12"
 fi
@@ -103,6 +107,9 @@ grep -q '0.0.0.0/1' <<<"$routes" && grep -q '128.0.0.0/1' <<<"$routes" &&
     pass "capture routes 0.0.0.0/1 + 128.0.0.0/1 on net-merge" || fail "capture routes missing: $routes"
 mtu=$(cat /sys/class/net/net-merge/mtu)
 [ "$mtu" = 9000 ] && pass "TUN MTU is 9000" || fail "TUN MTU is $mtu, want 9000"
+addr=$(ip -4 -o addr show dev net-merge | awk '{print $4}')
+[ "$addr" = 198.18.1.1/24 ] && pass "TUN moved to 198.18.1.1/24, off the other app's 198.18.0.1/30" ||
+    fail "TUN address is $addr, want 198.18.1.1/24"
 
 code=$(curl -4 -s --max-time 10 -o /dev/null -w '%{http_code}' https://example.com)
 [ "$code" = 200 ] && pass "plain HTTPS works through net-merge" || fail "HTTPS through net-merge: $code"
