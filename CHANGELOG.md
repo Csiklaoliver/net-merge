@@ -5,6 +5,8 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-23
+
 ### Added
 - **The tray menu shows the version** you are running (like `v0.3.3`), on the line above *Quit*, so a
   bug report has it without opening a terminal. It also asks GitHub for the newest release, at start and
