@@ -13,28 +13,40 @@ import (
 // CloseRead/CloseWrite because the TUN relay half-closes each direction separately.
 type slotConn struct {
 	*net.TCPConn
-	sl   *Slot
-	fam  Family
-	s    *Scheduler
-	once sync.Once
+	sl       *Slot
+	fam      Family
+	s        *Scheduler
+	once     sync.Once
+	activity *flowActivity
 }
 
 func (c *slotConn) Read(p []byte) (int, error) {
 	n, err := c.TCPConn.Read(p)
 	c.sl.bytesIn[c.fam].Add(int64(n))
+	if c.activity != nil {
+		c.activity.bytes.Add(int64(n))
+	}
 	return n, err
 }
 
 func (c *slotConn) Write(p []byte) (int, error) {
 	n, err := c.TCPConn.Write(p)
 	c.sl.bytesOut[c.fam].Add(int64(n))
+	if c.activity != nil {
+		c.activity.bytes.Add(int64(n))
+	}
 	return n, err
 }
 
 // release frees the slot's balancing count. It happens at the first half-close, not at the final
 // Close: the relay can keep a finished flow open for up to a minute waiting for the peer's FIN,
 // and counting those as active would steer new flows away from the NIC that just finished.
-func (c *slotConn) release() { c.once.Do(func() { c.s.ReleaseFor(c.sl, c.fam) }) }
+func (c *slotConn) release() {
+	c.once.Do(func() {
+		c.s.untrack(c.sl, c.fam, c.activity)
+		c.s.ReleaseFor(c.sl, c.fam)
+	})
+}
 
 func (c *slotConn) CloseRead() error  { c.release(); return c.TCPConn.CloseRead() }
 func (c *slotConn) CloseWrite() error { c.release(); return c.TCPConn.CloseWrite() }
@@ -46,7 +58,7 @@ func (b *Balancer) DialPinned(ctx context.Context, host string, port int) (net.C
 	if err != nil {
 		return nil, err
 	}
-	return &slotConn{TCPConn: c.(*net.TCPConn), sl: sl, fam: f, s: b.S}, nil
+	return &slotConn{TCPConn: c.(*net.TCPConn), sl: sl, fam: f, s: b.S, activity: b.S.track(sl, f)}, nil
 }
 
 type slotPacketConn struct {
