@@ -14,6 +14,12 @@ entry here before pushing a version tag.
   saved caps. Only traffic net-merge relays is capped, so an app bound directly to an adapter is not
   affected.
 
+### Fixed
+- **A fast link no longer gets skipped because it holds many idle connections** (chat apps and browsers
+  keep some open). New connections now go by how busy each link really is. Speed estimates are smoothed,
+  so one burst doesn't flip which link is preferred, and they start over when an adapter gets a new
+  address. Thanks to @vwidmer (#48).
+
 ## [0.3.5] - 2026-10-24
 
 ### Changed
