@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,6 +28,8 @@ const usage = `net-merge: use all your network adapters at once.
   net-merge on|off     turn system-wide mode on/off in a running tray (off also works for run)
   net-merge quit       turn it off and exit the tray
   net-merge status     show whether it is on, and per-adapter load
+  net-merge limit <adapter> <Mbit/s>   cap an adapter (0 or unlimited removes the cap)
+  net-merge limit      list the saved speed limits
   net-merge socks      plain SOCKS5 proxy on 127.0.0.1:1080 (no admin, per-app)
   net-merge list       show detected adapters
   net-merge autostart on|off|status   start the tray at sign-in (Windows: no UAC prompt)
@@ -132,6 +135,11 @@ func (c *common) boot(mode func() string) (*engine.Scheduler, *engine.Balancer, 
 	}
 	sched := engine.NewScheduler(nics)
 	sched.SetAuto(c.auto && len(c.weights) == 0)
+	if limits, err := state.LoadLimits(c.stateDir); err != nil {
+		logx.Printf("warning: %v (ignored)\n", err) // a bad limits file must not stop merging
+	} else {
+		sched.SetLimits(limits)
+	}
 	for _, n := range nics {
 		logx.Printf("  + %s\n", describeNic(n))
 	}
@@ -197,8 +205,12 @@ func formatNICs(snap []engine.SlotStats) string {
 		}
 		// "link" is the adapter's total traffic by any app (Windows' counters); "via net-merge" is the
 		// part net-merge relayed. Apps that bind to adapters directly (qBittorrent) only show in "link".
-		fmt.Fprintf(&sb, "%-14s v4 %-11s v6 %-11s link down %6.1f up %5.1f Mbit/s  via net-merge %6.1f  active %3d  total %5d  w %.2f/%.2f  failed %d%s\n",
-			s.Name, s.State, s.State6, s.LinkIn*8/1e6, s.LinkOut*8/1e6, (s.RateIn+s.RateOut)*8/1e6, s.Active, s.Total, s.Weight, s.Weight6, s.Failed, gone)
+		lim := ""
+		if s.LimitMbps > 0 {
+			lim = "  limit " + limitPhrase(s.LimitMbps)
+		}
+		fmt.Fprintf(&sb, "%-14s v4 %-11s v6 %-11s link down %6.1f up %5.1f Mbit/s  via net-merge %6.1f  active %3d  total %5d  w %.2f/%.2f  failed %d%s%s\n",
+			s.Name, s.State, s.State6, s.LinkIn*8/1e6, s.LinkOut*8/1e6, (s.RateIn+s.RateOut)*8/1e6, s.Active, s.Total, s.Weight, s.Weight6, s.Failed, lim, gone)
 	}
 	return sb.String()
 }
@@ -251,6 +263,8 @@ func main() {
 		cmdControl(cmd, args)
 	case "status":
 		cmdStatus(args)
+	case "limit":
+		cmdLimit(args)
 	case "socks":
 		cmdSocks(args)
 	case "list":
@@ -345,7 +359,7 @@ func cmdRun(args []string) {
 	}
 	state.TakeMarker(c.stateDir, "off") // drop a stale marker
 
-	_, bal, err := c.boot(func() string { return "system-wide" })
+	sched, bal, err := c.boot(func() string { return "system-wide" })
 	if err != nil {
 		logx.Printf("error: %v\n", err)
 		os.Exit(1)
@@ -376,6 +390,12 @@ func cmdRun(args []string) {
 		case <-crash:
 			os.Exit(3) // simulates a crash: no teardown runs
 		case <-poll.C:
+			if req, ok := state.TakeLimit(c.stateDir); ok {
+				sched.SetLimit(req.Adapter, req.Mbps)
+				if err := state.SaveLimits(c.stateDir, sched.Limits()); err != nil {
+					logx.Printf("warning: saving speed limits: %v\n", err)
+				}
+			}
 			if !state.TakeMarker(c.stateDir, "off") && !state.TakeMarker(c.stateDir, "quit") {
 				continue
 			}
@@ -430,6 +450,99 @@ func cmdStatus(args []string) {
 		return
 	}
 	fmt.Printf("net-merge is ON (%s, pid %d, up %s)\nIPv6: %s\n%s", st.Mode, st.PID, time.Since(st.Since).Truncate(time.Second), st.V6, formatNICs(st.NICs))
+}
+
+// cmdLimit lists the saved caps, or sets one. A running instance gets the change through a marker
+// file and saves it; with nothing running, limits.json is updated directly so the next start picks
+// it up.
+func cmdLimit(args []string) {
+	fs := flag.NewFlagSet("limit", flag.ExitOnError)
+	dir := fs.String("state-dir", state.DefaultDir(), "state directory")
+	fs.Parse(args)
+	rest := fs.Args()
+
+	if len(rest) == 0 {
+		limits, err := state.LoadLimits(*dir)
+		if err != nil {
+			die(err)
+		}
+		if len(limits) == 0 {
+			fmt.Println("No speed limits set.")
+			return
+		}
+		names := make([]string, 0, len(limits))
+		for name := range limits {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			fmt.Printf("%-14s %s\n", name, limitPhrase(limits[name]))
+		}
+		return
+	}
+	if len(rest) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: net-merge limit <adapter> <Mbit/s>   (0, off or unlimited removes the cap)")
+		os.Exit(2)
+	}
+	name := strings.TrimSpace(rest[0])
+	mbitPerSec, err := engine.ParseLimit(rest[1])
+	if err != nil {
+		die(err)
+	}
+	live, err := limitApply(*dir, name, mbitPerSec, platform.InstanceRunning(), limitWait)
+	if err != nil {
+		die(err)
+	}
+	if live {
+		fmt.Printf("%s: %s.\n", name, limitPhrase(mbitPerSec))
+	} else {
+		fmt.Printf("%s: %s. It takes effect the next time net-merge starts.\n", name, limitPhrase(mbitPerSec))
+	}
+}
+
+// limitWait is how long `net-merge limit` waits for a running instance to apply and save the cap.
+var limitWait = 4 * time.Second
+
+// limitApply saves a cap. With a running instance the request goes through ctl/ and the instance
+// applies it and saves limits.json; with nothing running this writes limits.json itself, so the
+// next start picks it up. It reports whether a running instance applied it.
+func limitApply(dir, name string, mbitPerSec float64, running bool, wait time.Duration) (live bool, err error) {
+	if !running {
+		limits, err := state.LoadLimits(dir)
+		if err != nil {
+			return false, err
+		}
+		if mbitPerSec <= 0 {
+			delete(limits, name)
+		} else {
+			limits[name] = mbitPerSec
+		}
+		return false, state.SaveLimits(dir, limits)
+	}
+	if err := state.SendLimit(dir, state.LimitRequest{Adapter: name, Mbps: mbitPerSec}); err != nil {
+		return true, err
+	}
+	// The instance applies it within a second and saves limits.json; wait for that as proof.
+	deadline := time.Now().Add(wait)
+	for {
+		if limits, err := state.LoadLimits(dir); err == nil {
+			got, set := limits[name]
+			if (mbitPerSec <= 0 && !set) || (set && got == mbitPerSec) {
+				return true, nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return true, fmt.Errorf("sent the limit, but the running instance did not apply it")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+func limitPhrase(mbitPerSec float64) string {
+	if mbitPerSec <= 0 {
+		return "unlimited"
+	}
+	return strconv.FormatFloat(mbitPerSec, 'f', -1, 64) + " Mbit/s"
 }
 
 func cmdCleanup() {

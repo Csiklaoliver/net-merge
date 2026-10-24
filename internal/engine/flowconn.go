@@ -21,16 +21,22 @@ type slotConn struct {
 }
 
 func (c *slotConn) Read(p []byte) (int, error) {
+	if pair := c.sl.limit.Load(); pair != nil && len(p) > pair.chunk {
+		p = p[:pair.chunk] // hand out a chunk at a time, so a limited flow stays smooth
+	}
 	n, err := c.TCPConn.Read(p)
-	c.sl.bytesIn[c.fam].Add(int64(n))
-	if c.activity != nil {
-		c.activity.bytes.Add(int64(n))
+	if n > 0 {
+		c.sl.bytesIn[c.fam].Add(int64(n))
+		if c.activity != nil {
+			c.activity.bytes.Add(int64(n))
+		}
+		c.sl.throttle(true, n)
 	}
 	return n, err
 }
 
 func (c *slotConn) Write(p []byte) (int, error) {
-	n, err := c.TCPConn.Write(p)
+	n, err := c.sl.writePaced(c.TCPConn, p, false)
 	c.sl.bytesOut[c.fam].Add(int64(n))
 	if c.activity != nil {
 		c.activity.bytes.Add(int64(n))
@@ -69,11 +75,15 @@ type slotPacketConn struct {
 
 func (c *slotPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 	n, a, err := c.PacketConn.ReadFrom(p)
-	c.sl.bytesIn[c.fam].Add(int64(n))
+	if n > 0 {
+		c.sl.bytesIn[c.fam].Add(int64(n))
+		c.sl.throttlePacket(true, n)
+	}
 	return n, a, err
 }
 
 func (c *slotPacketConn) WriteTo(p []byte, a net.Addr) (int, error) {
+	c.sl.throttlePacket(false, len(p))
 	n, err := c.PacketConn.WriteTo(p, a)
 	c.sl.bytesOut[c.fam].Add(int64(n))
 	return n, err

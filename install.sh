@@ -131,7 +131,7 @@ uninstall() {
             brew uninstall net-merge
             brew untap rohit267/tap >/dev/null 2>&1 || true
         fi
-        $SUDO rm -rf /var/run/net-merge "$HOME/Library/Logs/net-merge.log"
+        $SUDO rm -rf /var/run/net-merge "/Library/Application Support/net-merge" "$HOME/Library/Logs/net-merge.log"
     else
         if have dpkg && dpkg -s net-merge >/dev/null 2>&1; then
             say "Removing with apt"

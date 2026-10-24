@@ -350,7 +350,11 @@ net-merge when you do not want that.
    many connections net-merge gave it, and the buttons *Pause merging* / *Start merging* and *Quit*. The
    line above *Quit* is the version you are running, like `v0.3.3`. It reads the newest release number
    from GitHub (at start, and again every 6 hours) and turns into *Update to v0.3.4* if there is one;
-   click it to open the release page.
+   click it to open the release page. Click a connection to cap it at 1, 2, 5, 10, 20, 50 or 100 Mbit/s
+   (or *Unlimited*). For any other speed, from a terminal: `net-merge limit "Ethernet 2" 25` (Mbit/s; 0 or
+   `unlimited` removes the cap), and `net-merge limit` lists what is set. The cap covers its downloads and
+   uploads and is remembered after a restart. Only traffic net-merge relays is capped: an app bound directly
+   to an adapter (for example qBittorrent on a fixed interface) ignores it.
 6. To start it at sign-in: tick *Start at sign-in* in the menu (or the box in the Windows installer, or run
    `net-merge autostart on`). On a Mac this needs `sudo net-merge install` once.
 

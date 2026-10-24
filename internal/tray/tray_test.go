@@ -70,3 +70,25 @@ func TestTrayTooltipFitsWindowsLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestLimitLabel(t *testing.T) {
+	for in, want := range map[float64]string{1: "1", 2.5: "2.5", 100: "100"} {
+		if got := limitLabel(in); got != want {
+			t.Errorf("limitLabel(%v) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestLimitTextUsesMbit(t *testing.T) {
+	for in, want := range map[float64]string{1: "1 Mbit/s", 12.5: "12.5 Mbit/s", 1000: "1000 Mbit/s"} {
+		if got := limitText(in); got != want {
+			t.Errorf("limitText(%v) = %q, want %q", in, got, want)
+		}
+	}
+	if tip := limitTip(20); !strings.Contains(tip, "20 Mbit/s") {
+		t.Errorf("limitTip(20) = %q, want it to say 20 Mbit/s", tip)
+	}
+	if tip := limitTip(0); !strings.Contains(tip, "full speed") {
+		t.Errorf("limitTip(0) = %q, want it to describe no cap", tip)
+	}
+}

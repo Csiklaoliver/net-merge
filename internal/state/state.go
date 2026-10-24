@@ -14,6 +14,15 @@ import (
 // a per-user directory: status.json (written once a second while on) and marker files
 // ("on", "off", "quit") that the running instance consumes.
 
+// macStateDir is where the macOS tray keeps its status and markers. It is under /var/run because
+// the tray runs as root but is driven by a normal user, so the directory has to be root-owned.
+const macStateDir = "/var/run/net-merge"
+
+// macLimitsDir is where the caps live on macOS: /var/run is emptied at boot, and a metered-tether
+// cap that forgets itself after a reboot is worse than no cap at all. Application Support is the
+// usual place for a setting that has to stay.
+const macLimitsDir = "/Library/Application Support/net-merge"
+
 type Status struct {
 	PID     int
 	Mode    string
@@ -27,7 +36,7 @@ func DefaultDir() string {
 	// The macOS tray runs as root but is commanded by the user, so its state can't live in a
 	// user-owned directory (root would follow a planted symlink): a fixed root-owned path.
 	if runtime.GOOS == "darwin" {
-		return "/var/run/net-merge"
+		return macStateDir
 	}
 	base, err := os.UserCacheDir()
 	if err != nil {

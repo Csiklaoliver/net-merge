@@ -5,6 +5,15 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+### Added
+- **Speed limits per connection** from the tray menu: click a connection and pick 1, 2, 5, 10, 20, 50 or
+  100 Mbit/s (or *Unlimited*). The cap covers that connection's downloads and uploads across all of its
+  flows and takes effect immediately; the choice is saved and applied again after a restart (on macOS
+  it is kept under `/Library/Application Support`, so it survives a reboot too). From a
+  terminal, `net-merge limit <adapter> <Mbit/s>` sets any other speed, and `net-merge limit` lists the
+  saved caps. Only traffic net-merge relays is capped, so an app bound directly to an adapter is not
+  affected.
+
 ## [0.3.5] - 2026-10-24
 
 ### Changed
