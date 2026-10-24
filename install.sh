@@ -15,7 +15,7 @@
 set -eu
 
 REPO=https://github.com/rohit267/net-merge
-BASE=https://rohit267.github.io/net-merge
+BASE=https://pkg.net-merge.org
 FPR=0168C7AB77721656904811AE904F61E7F4F1C2A1
 
 say() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }

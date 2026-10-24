@@ -154,6 +154,11 @@ jobs:
           net-merge version
           desktop-file-validate /usr/share/applications/io.github.rohit267.net-merge.desktop
           test -f /usr/share/icons/hicolor/256x256/apps/net-merge.png
+          # a setup on the old address is moved to pkg.net-merge.org by the install script
+          echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] https://rohit267.github.io/net-merge/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
+          sudo sh /var/lib/dpkg/info/net-merge.postinst configure
+          grep -q " https://pkg.net-merge.org/apt " /etc/apt/sources.list.d/net-merge.list
+          sudo rm /etc/apt/sources.list.d/net-merge.list
       - name: apt install net-merge (Debian)
         run: |
           docker run --rm --network host --cap-add NET_ADMIN debian:stable bash -ec '

@@ -4,14 +4,14 @@
 # createrepo_c and gpg, with the signing key already in the keyring. The Alpine and Arch
 # repositories are added to the same site by build-container-repos.sh.
 #
-#   GPG_KEY_ID=<fingerprint> REPO_BASE_URL=https://rohit267.github.io/net-merge \
+#   GPG_KEY_ID=<fingerprint> REPO_BASE_URL=https://pkg.net-merge.org \
 #       scripts/build-repos.sh PKG_DIR OUT_DIR
 set -euo pipefail
 PKGS=$(realpath "${1:?usage: build-repos.sh PKG_DIR OUT_DIR}")
 mkdir -p "${2:?usage: build-repos.sh PKG_DIR OUT_DIR}"
 OUT=$(realpath "$2")
 KEY=${GPG_KEY_ID:?set GPG_KEY_ID to the signing key fingerprint}
-BASE=${REPO_BASE_URL:-https://rohit267.github.io/net-merge}
+BASE=${REPO_BASE_URL:-https://pkg.net-merge.org}
 sign() { gpg --batch --yes --pinentry-mode loopback --local-user "$KEY" "$@"; }
 
 rm -rf "$OUT"/*

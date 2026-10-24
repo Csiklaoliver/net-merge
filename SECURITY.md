@@ -7,7 +7,7 @@ Please **do not open a public issue** for a security problem.
 Report it privately instead:
 
 - Use **Report a vulnerability** on the repository's [Security tab](https://github.com/rohit267/net-merge/security/advisories/new), or
-- email **rohit@champdev.me**.
+- email **hello@net-merge.org**.
 
 Please include what you found, the steps to reproduce it, and your OS and `net-merge version`. I will
 answer as soon as I can and credit you in the fix if you want.

@@ -107,7 +107,8 @@ jobs:
           ls pkgs | wc -l
       - name: Build the repositories
         env:
-          REPO_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          # pkg.net-merge.org passes requests through to this Pages site (net-merge/website, pkg.ts)
+          REPO_BASE_URL: https://pkg.net-merge.org
         run: |
           scripts/build-repos.sh pkgs site
           scripts/build-container-repos.sh pkgs site

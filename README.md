@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://net-merge.org">Website</a> ·
   <a href="https://github.com/rohit267/net-merge/releases/latest">Download</a> ·
   <a href="#install">Install</a> ·
   <a href="#add-a-second-connection">Add a second connection</a> ·
@@ -117,36 +118,36 @@ curl -fsSL https://github.com/rohit267/net-merge/releases/latest/download/net-me
 **Debian, Ubuntu, Linux Mint, Pop!_OS, Raspberry Pi OS** (apt):
 
 ```
-curl -fsSL https://rohit267.github.io/net-merge/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg >/dev/null
-echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] https://rohit267.github.io/net-merge/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
+curl -fsSL https://pkg.net-merge.org/apt/key.gpg | sudo tee /usr/share/keyrings/net-merge.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/net-merge.gpg] https://pkg.net-merge.org/apt stable main" | sudo tee /etc/apt/sources.list.d/net-merge.list
 sudo apt update && sudo apt install -y net-merge
 ```
 
 **Fedora, RHEL, Rocky, Alma** (dnf):
 
 ```
-sudo curl -fsSL -o /etc/yum.repos.d/net-merge.repo https://rohit267.github.io/net-merge/rpm/net-merge.repo && sudo dnf install -y net-merge
+sudo curl -fsSL -o /etc/yum.repos.d/net-merge.repo https://pkg.net-merge.org/rpm/net-merge.repo && sudo dnf install -y net-merge
 ```
 
 **openSUSE** (zypper):
 
 ```
-sudo zypper addrepo https://rohit267.github.io/net-merge/rpm/net-merge.repo && sudo zypper --gpg-auto-import-keys install -y net-merge
+sudo zypper addrepo https://pkg.net-merge.org/rpm/net-merge.repo && sudo zypper --gpg-auto-import-keys install -y net-merge
 ```
 
 **Arch, Manjaro, EndeavourOS** (pacman):
 
 ```
-curl -fsSL https://rohit267.github.io/net-merge/apt/key.asc | sudo pacman-key --add - && sudo pacman-key --lsign-key 0168C7AB77721656904811AE904F61E7F4F1C2A1
-printf '\n[net-merge]\nSigLevel = Required\nServer = https://rohit267.github.io/net-merge/arch/$arch\n' | sudo tee -a /etc/pacman.conf
+curl -fsSL https://pkg.net-merge.org/apt/key.asc | sudo pacman-key --add - && sudo pacman-key --lsign-key 0168C7AB77721656904811AE904F61E7F4F1C2A1
+printf '\n[net-merge]\nSigLevel = Required\nServer = https://pkg.net-merge.org/arch/$arch\n' | sudo tee -a /etc/pacman.conf
 sudo pacman -Sy --noconfirm net-merge
 ```
 
 **Alpine** (apk):
 
 ```
-sudo wget -O /etc/apk/keys/net-merge.rsa.pub https://rohit267.github.io/net-merge/apk/net-merge.rsa.pub
-echo https://rohit267.github.io/net-merge/apk | sudo tee -a /etc/apk/repositories && sudo apk add net-merge
+sudo wget -O /etc/apk/keys/net-merge.rsa.pub https://pkg.net-merge.org/apk/net-merge.rsa.pub
+echo https://pkg.net-merge.org/apk | sudo tee -a /etc/apk/repositories && sudo apk add net-merge
 ```
 
 **Homebrew** (Linux):
@@ -248,7 +249,7 @@ net-merge quit; net-merge autostart off; sudo pacman -R --noconfirm net-merge &&
 **Alpine** (apk):
 
 ```
-net-merge quit; net-merge autostart off; sudo apk del net-merge && sudo sed -i '\#rohit267.github.io/net-merge/apk#d' /etc/apk/repositories && sudo rm -f /etc/apk/keys/net-merge.rsa.pub
+net-merge quit; net-merge autostart off; sudo apk del net-merge && sudo sed -i -e '\#pkg.net-merge.org/apk#d' -e '\#rohit267.github.io/net-merge/apk#d' /etc/apk/repositories && sudo rm -f /etc/apk/keys/net-merge.rsa.pub
 ```
 
 **Homebrew** (Linux):
