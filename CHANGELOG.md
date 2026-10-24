@@ -5,6 +5,8 @@ entry here before pushing a version tag.
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-24
+
 ### Changed
 - **The Linux repositories have a new address: `pkg.net-merge.org`.** This update moves your apt, dnf,
   zypper, apk or pacman setup to it by itself, so there is nothing to do. New installs use it from the

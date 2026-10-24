@@ -3,3 +3,4 @@ wintun.dll
 dist/
 result
 *.syso
+.DS_Store
