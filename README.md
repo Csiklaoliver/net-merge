@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://net-merge.org">Website</a> ·
   <a href="https://github.com/rohit267/net-merge/releases/latest">Download</a> ·
+  <a href="https://github.com/net-merge/android">Android</a> ·
   <a href="#install">Install</a> ·
   <a href="#add-a-second-connection">Add a second connection</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -40,7 +41,7 @@
 
 <p align="center">
   <strong>Need more control? Try <a href="https://github.com/champdev-me/routengine">RoutEngine</a>, the upgraded commercial version of net-merge.</strong><br>
-  Choose the connection for each app, add a fallback, and set a speed limit or data cap per app. Windows. Free for personal use, Pro for work.
+  Choose the connection for each app, add a fallback, and set a speed limit or data cap per app. Windows, macOS and Linux. Free for personal use, Pro for work.
 </p>
 
 <p align="center">
@@ -95,8 +96,12 @@ That's it: net-merge is installed and its icon appears in the menu bar or tray. 
 uses your package manager (apt, dnf, zypper, apk or pacman) and on macOS Homebrew when you have it, so
 net-merge updates with the rest of your system. To start it at sign-in, tick *Start at sign-in* in its menu.
 
+**Android** (new, beta): on your phone, download
+[net-merge-android.apk](https://github.com/net-merge/android/releases/latest/download/net-merge-android.apk) and open it.
+It uses Wi-Fi and mobile data at the same time. More in [net-merge/android](https://github.com/net-merge/android).
+
 > **Want to choose the connection for each app?** [RoutEngine](https://github.com/champdev-me/routengine) is the
-> upgraded commercial version of net-merge, for Windows. Pick an adapter per app, add a fallback, and set a speed
+> upgraded commercial version of net-merge, for Windows, macOS and Linux. Pick an adapter per app, add a fallback, and set a speed
 > limit or data cap per app. Free for personal use, Pro for work.
 
 <details>
