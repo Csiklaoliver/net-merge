@@ -24,7 +24,7 @@
   <a href="https://github.com/rohit267/net-merge/releases"><img src="https://img.shields.io/github/v/release/rohit267/net-merge" alt="Latest release"></a>
   <a href="https://github.com/rohit267/net-merge/releases"><img src="https://img.shields.io/github/downloads/rohit267/net-merge/total" alt="Downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/rohit267/net-merge" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Windows, macOS and Linux">
+  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-blue" alt="Windows, macOS, Linux and Android">
   <a href="https://buymeacoffee.com/rohit267"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-rohit267-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
   <a href="https://paypal.me/champdev"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
 </p>
