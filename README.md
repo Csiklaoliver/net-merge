@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://net-merge.org">Website</a> ·
   <a href="https://github.com/rohit267/net-merge/releases/latest">Download</a> ·
-  <a href="https://github.com/net-merge/android">Android</a> ·
+  <a href="#android">Android</a> ·
   <a href="#install">Install</a> ·
   <a href="#add-a-second-connection">Add a second connection</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -96,9 +96,7 @@ That's it: net-merge is installed and its icon appears in the menu bar or tray. 
 uses your package manager (apt, dnf, zypper, apk or pacman) and on macOS Homebrew when you have it, so
 net-merge updates with the rest of your system. To start it at sign-in, tick *Start at sign-in* in its menu.
 
-**Android** (new, beta): on your phone, download
-[net-merge-android.apk](https://github.com/net-merge/android/releases/latest/download/net-merge-android.apk) and open it.
-It uses Wi-Fi and mobile data at the same time. More in [net-merge/android](https://github.com/net-merge/android).
+**Android**: see [Android](#android) below.
 
 > **Want to choose the connection for each app?** [RoutEngine](https://github.com/champdev-me/routengine) is the
 > upgraded commercial version of net-merge, for Windows, macOS and Linux. Pick an adapter per app, add a fallback, and set a speed
@@ -190,6 +188,26 @@ Then start it with `net-merge tray` (Linux, macOS) or from the Start menu (Windo
   [`packaging/apt-signing-key.asc`](packaging/apt-signing-key.asc), fingerprint
   `0168 C7AB 7772 1656 9048 11AE 904F 61E7 F4F1 C2A1`.
 </details>
+
+## Android
+
+net-merge for Android uses Wi-Fi and mobile data at the same time. No root, no account, no server. It is
+new (beta).
+
+1. On your phone, download
+   [net-merge-android.apk](https://github.com/net-merge/android/releases/latest/download/net-merge-android.apk).
+2. Open it and install it. If Android asks, allow your browser or file manager to install apps.
+3. Open **net-merge**, tap the power button and tap **OK** on the VPN prompt.
+4. Optional: add the **net-merge** tile to Quick Settings to turn it on and off with one tap.
+
+It needs Android 8.0 or newer.
+
+- **Faster:** apps that open many connections at once, like Play Store updates, web pages, torrents, cloud
+  backups and download managers. One single download stays on one network, like on a computer.
+- **Mobile data stays on** while net-merge runs, so keep an eye on your data plan.
+- **One VPN at a time:** Android lets only one VPN app run, so net-merge can't run next to another VPN.
+- **Problems?** [Open an issue](https://github.com/rohit267/net-merge/issues/new/choose) and pick *Android*.
+  The code is in [net-merge/android](https://github.com/net-merge/android).
 
 ## Uninstall
 
