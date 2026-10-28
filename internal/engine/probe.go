@@ -20,7 +20,11 @@ const (
 )
 
 func probe(sl *Slot, f Family) bool {
-	ip := sl.ip(f)
+	return probeAddr(sl.addr.Load(), f)
+}
+
+func probeAddr(a *slotAddr, f Family) bool {
+	ip := a.ip(f)
 	if ip == nil {
 		return false
 	}
@@ -29,7 +33,7 @@ func probe(sl *Slot, f Family) bool {
 		network = "tcp6"
 	}
 	for _, t := range probeTargets[f] {
-		d := net.Dialer{LocalAddr: &net.TCPAddr{IP: ip}, Control: nics.ForceEgress(sl.Index, f == Fam6), Timeout: probeTimeout}
+		d := net.Dialer{LocalAddr: &net.TCPAddr{IP: ip}, Control: nics.ForceEgress(a.index, f == Fam6), Timeout: probeTimeout}
 		if c, err := d.Dial(network, t); err == nil {
 			c.Close()
 			return true
@@ -39,8 +43,29 @@ func probe(sl *Slot, f Family) bool {
 }
 
 type probeJob struct {
-	sl *Slot
-	f  Family
+	sl   *Slot
+	f    Family
+	addr *slotAddr
+}
+
+// Ignore results for an adapter that changed while this probe was in flight. In particular,
+// a failed check of the old DHCP address must not sideline the newly connected link.
+func (s *Scheduler) finishProbe(j probeJob, up bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	j.sl.probing[j.f].Store(false)
+	current := j.sl.addr.Load()
+	if !j.sl.present || current != j.addr {
+		// An unaffected family may also share the replaced snapshot. Check it again promptly.
+		j.sl.lastProbe[j.f] = time.Time{}
+		return
+	}
+	if up {
+		j.sl.state[j.f] = stateUp
+		j.sl.downUntil[j.f] = time.Time{}
+	} else {
+		j.sl.state[j.f] = stateDown
+	}
 }
 
 // RunProbes checks every adapter's internet access per address family: new ones immediately,
@@ -58,8 +83,7 @@ func (s *Scheduler) RunProbes(stop <-chan struct{}) {
 		}
 		for _, j := range s.probeDue() {
 			go func() {
-				defer j.sl.probing[j.f].Store(false)
-				s.SetState(j.sl, j.f, probe(j.sl, j.f))
+				s.finishProbe(j, probeAddr(j.addr, j.f))
 			}()
 		}
 	}
@@ -89,7 +113,7 @@ func (s *Scheduler) probeDue() []probeJob {
 			if now.Sub(sl.lastProbe[f]) >= every {
 				sl.lastProbe[f] = now
 				sl.probing[f].Store(true)
-				due = append(due, probeJob{sl, f})
+				due = append(due, probeJob{sl: sl, f: f, addr: sl.addr.Load()})
 			}
 		}
 	}

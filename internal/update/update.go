@@ -13,7 +13,7 @@ import (
 )
 
 // Repo is where releases are read from.
-const Repo = "rohit267/net-merge"
+const Repo = "Csiklaoliver/net-merge"
 
 // ReleasesURL is what the tray opens: GitHub redirects it to the newest release.
 const ReleasesURL = "https://github.com/" + Repo + "/releases/latest"

@@ -38,11 +38,14 @@ Flags for `tray`/`run`/`socks`: `-include "WiFi,Ethernet"` (only these adapters)
 - Each adapter and each address family is probed for real internet access. A tether with no data or a
   captive-portal Wi-Fi gets no flows; a recovered link rejoins within seconds.
 - Automatic balancing sends flows to the adapter with the lowest (busy flows + 1) / weight,
-  discounting TCP sockets with no data for two seconds. Connecting sockets still count as busy.
+  first using an idle eligible adapter if another adapter is busy. TCP and UDP sockets with no data
+  for two seconds are discounted. Connecting sockets still count as busy. UDP sockets hold their
+  load count until Close; TCP half-closes keep the remaining direction tracked.
   Weights update every second from smoothed throughput estimates, separately for IPv4 and IPv6
   (a link can be fast over native IPv6 and slow over translated IPv4). Idle low estimates
   recover up to half the best link's capacity, never to equal preference. Address changes
-  reset the affected family's estimate. Static weights retain least-open-flows scheduling;
+  reset the affected family's estimate. Reconnecting or changing the interface index resets both
+  families and updates the egress binding; stale probe results are discarded. Static weights retain least-open-flows scheduling;
   scheduling respects health filtering, cooldowns and retry exclusions. Existing flows
   stay pinned to their original adapter; no background speed tests are used.
 - IPv6 (`-ipv6 auto|on|off`, tray checkbox): IPv6 flows can only leave through adapters that have IPv6, and

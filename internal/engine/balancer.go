@@ -149,9 +149,10 @@ func (b *Balancer) DialTCP(ctx context.Context, host string, port int) (net.Conn
 			return nil, nil, f, &dialError{rep: rep, err: lastErr}
 		}
 		tried[sl.key] = struct{}{}
+		a := sl.addr.Load()
 		d := net.Dialer{
-			LocalAddr: &net.TCPAddr{IP: sl.ip(f)},            // binding the source IP pins the flow to this NIC
-			Control:   nics.ForceEgress(sl.Index, f == Fam6), // and this forces egress even if the TUN's routes match
+			LocalAddr: &net.TCPAddr{IP: a.ip(f)},            // source and index come from the same scan
+			Control:   nics.ForceEgress(a.index, f == Fam6), // forces egress even if the TUN's routes match
 			Timeout:   b.ConnectTimeout,
 			KeepAlive: 30 * time.Second,
 		}
@@ -187,21 +188,16 @@ var bufPool = sync.Pool{New: func() any { b := make([]byte, 128<<10); return &b 
 func Relay(client, upstream net.Conn, sl *Slot, f Family, s *Scheduler) {
 	activity := s.track(sl, f)
 	var wg sync.WaitGroup
-	var once sync.Once
-	release := func() {
-		once.Do(func() {
-			s.untrack(sl, f, activity)
-			s.ReleaseFor(sl, f)
-		})
-	} // at the first half-close, see slotConn
+	defer func() {
+		s.untrack(sl, f, activity)
+		s.ReleaseFor(sl, f)
+	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		pump(upstream, client, &sl.bytesOut[f], sl, false, activity)
-		release()
 	}()
 	pump(client, upstream, &sl.bytesIn[f], sl, true, activity)
-	release()
 	wg.Wait()
 	client.Close()
 	upstream.Close()

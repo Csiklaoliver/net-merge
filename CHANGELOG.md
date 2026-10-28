@@ -15,6 +15,12 @@ entry here before pushing a version tag.
   affected.
 
 ### Fixed
+- **Parallel transfers use an idle healthy link in automatic mode**, even when its learned speed
+  is low. Additional flows still follow capacity weights, and fixed weights keep their existing behaviour.
+- **UDP/QUIC flows stay in the load count until they close**, with idle sockets discounted in automatic
+  mode. Half-closing a TCP request also keeps its response tracked until the connection closes.
+- **Reconnected adapters refresh their egress interface and health state.** Probes of an old address
+  or interface no longer overwrite the state of the replacement connection.
 - **A fast link no longer gets skipped because it holds many idle connections** (chat apps and browsers
   keep some open). New connections now go by how busy each link really is. Speed estimates are smoothed,
   so one burst doesn't flip which link is preferred, and they start over when an adapter gets a new

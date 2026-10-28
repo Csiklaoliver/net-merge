@@ -35,14 +35,24 @@ func (l linkState) String() string {
 	return [...]string{"checking", "up", "no internet"}[l]
 }
 
-type slotAddr struct{ ip4, ip6 net.IP }
+// Immutable routing snapshot, replaced on reconnect as well as address/index changes.
+type slotAddr struct {
+	ip4, ip6 net.IP
+	index    int
+}
+
+func (a *slotAddr) ip(f Family) net.IP {
+	if f == Fam6 {
+		return a.ip6
+	}
+	return a.ip4
+}
 
 // Slot is a NIC plus its live counters. Counters are atomic so the data path never takes a lock.
 type Slot struct {
-	Name  string
-	Index int
-	key   string
-	addr  atomic.Pointer[slotAddr]
+	Name string
+	key  string
+	addr atomic.Pointer[slotAddr]
 
 	active, total, failed atomic.Int64 // active is across families (idle check on removal)
 	actF                  [2]atomic.Int64
@@ -106,11 +116,7 @@ func (sl *Slot) busy(f Family) int64 {
 }
 
 func (sl *Slot) ip(f Family) net.IP {
-	a := sl.addr.Load()
-	if f == Fam6 {
-		return a.ip6
-	}
-	return a.ip4
+	return sl.addr.Load().ip(f)
 }
 
 type SlotStats struct {
@@ -201,7 +207,7 @@ func (s *Scheduler) Limits() map[string]float64 {
 }
 
 func normAddr(n nics.Nic) *slotAddr {
-	a := &slotAddr{}
+	a := &slotAddr{index: n.Index}
 	if n.IP != nil {
 		a.ip4 = n.IP.To4()
 	}
@@ -217,9 +223,7 @@ func normAddr(n nics.Nic) *slotAddr {
 func (s *Scheduler) Update(nics []nics.Nic) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, sl := range s.slots {
-		sl.present = false
-	}
+	seen := make(map[*Slot]bool, len(nics))
 	for _, n := range nics {
 		na := normAddr(n)
 		var found *Slot
@@ -230,22 +234,21 @@ func (s *Scheduler) Update(nics []nics.Nic) {
 			}
 		}
 		if found == nil {
-			sl := &Slot{Name: n.Name, Index: n.Index, key: n.Name, weight: [2]float64{n.Weight, n.Weight}, present: true}
+			sl := &Slot{Name: n.Name, key: n.Name, weight: [2]float64{n.Weight, n.Weight}, present: true}
 			sl.addr.Store(na)
 			sl.setLimit(s.limits[n.Name])
 			s.slots = append(s.slots, sl)
+			seen[sl] = true
 			continue
 		}
-		found.present = true
+		seen[found] = true
 		if !s.auto {
 			found.weight = [2]float64{n.Weight, n.Weight}
 		}
 		old := found.addr.Load()
+		reconnected := !found.present || old.index != na.index
 		for _, f := range []Family{Fam4, Fam6} {
-			changed := !old.ip4.Equal(na.ip4)
-			if f == Fam6 {
-				changed = !old.ip6.Equal(na.ip6)
-			}
+			changed := reconnected || !old.ip(f).Equal(na.ip(f))
 			if changed {
 				found.state[f] = stateUnknown
 				found.lastProbe[f], found.downUntil[f] = time.Time{}, time.Time{}
@@ -255,12 +258,15 @@ func (s *Scheduler) Update(nics []nics.Nic) {
 				}
 			}
 		}
-		if !old.ip4.Equal(na.ip4) || !old.ip6.Equal(na.ip6) {
+		if reconnected || !old.ip4.Equal(na.ip4) || !old.ip6.Equal(na.ip6) {
 			found.addr.Store(na)
+			found.linkPrimed = false
+			found.linkRateIn, found.linkRateOut = 0, 0
 		}
 	}
 	kept := s.slots[:0]
 	for _, sl := range s.slots {
+		sl.present = seen[sl]
 		if sl.present || sl.active.Load() > 0 {
 			kept = append(kept, sl)
 		}
@@ -283,6 +289,10 @@ func (s *Scheduler) Tick(dt time.Duration) {
 	// (it would stall AcquireFor and Update) and take the lock only to store the results.
 	s.mu.Lock()
 	slots := append([]*Slot(nil), s.slots...)
+	addrs := make([]*slotAddr, len(slots))
+	for i, sl := range slots {
+		addrs[i] = sl.addr.Load()
+	}
 	s.mu.Unlock()
 
 	type sample struct {
@@ -291,8 +301,8 @@ func (s *Scheduler) Tick(dt time.Duration) {
 	}
 
 	samples := make([]sample, len(slots))
-	for i, sl := range slots {
-		in, out, ok := nics.Octets(sl.Index)
+	for i := range slots {
+		in, out, ok := nics.Octets(addrs[i].index)
 		samples[i] = sample{in, out, ok}
 	}
 
@@ -300,6 +310,9 @@ func (s *Scheduler) Tick(dt time.Duration) {
 	defer s.mu.Unlock()
 	sec := dt.Seconds()
 	for i, sl := range slots {
+		if sl.addr.Load() != addrs[i] {
+			continue // a rescan replaced this adapter while the OS counters were read
+		}
 		in, out, ok := samples[i].in, samples[i].out, samples[i].ok
 		if !sl.present || !ok {
 			sl.linkRateIn, sl.linkRateOut, sl.linkPrimed = 0, 0, false
@@ -421,16 +434,21 @@ func (s *Scheduler) AcquireFor(f Family, skip map[string]struct{}) *Slot {
 	// Random start so ties don't resonate with the arrival pattern (a rotating counter can
 	// lock onto e.g. "every third flow is a short DNS-like one" and starve an adapter).
 	start := rand.IntN(len(pool))
+	// Automatic mode should use a healthy idle link when another link is busy, even if its
+	// learned weight is low. Otherwise a two-stream download can stay on the fast link forever.
+	// With no busy flows, retain weighted preference; static weights remain authoritative.
 	var best *Slot
 	bestScore := math.Inf(1)
+	bestIdle := false
 	for i := range pool {
 		sl := pool[(start+i)%len(pool)]
 		load := sl.actF[f].Load()
 		if s.auto {
 			load = sl.busy(f)
 		}
-		if score := float64(load+1) / sl.weight[f]; score < bestScore {
-			best, bestScore = sl, score
+		idle := s.auto && load == 0
+		if score := float64(load+1) / sl.weight[f]; best == nil || idle && !bestIdle || idle == bestIdle && score < bestScore {
+			best, bestScore, bestIdle = sl, score, idle
 		}
 	}
 	best.active.Add(1)

@@ -1,3 +1,9 @@
+> **Reliability fork:** [Csiklaoliver/net-merge](https://github.com/Csiklaoliver/net-merge)
+> fixes idle-link starvation during parallel transfers, UDP/QUIC load accounting,
+> half-closed TCP accounting, and stale routing/health state after adapter reconnects.
+> See [fork notes](docs/FORK.md) for build instructions and validation limits.
+> The upstream installation commands below install the original project, without these fixes.
+
 <p align="center">
   <img src="docs/icon.png" width="128" alt="net-merge icon">
 </p>
@@ -312,7 +318,7 @@ To try it without installing: `sudo nix run github:rohit267/net-merge -- run`.
 
 net-merge needs **two or more** real connections. Use Wi-Fi plus one of these: a phone (USB tethering or
 hotspot), an Ethernet cable, or a second Wi-Fi. Plug it in and net-merge adds it within a few seconds.
-When you unplug it, its connections move to the others.
+When you unplug it, new connections use the others; apps must reconnect any interrupted transfers.
 
 **Windows and Linux:** plug the phone in and turn on *USB tethering* (Android) or *Personal Hotspot*
 (iPhone). That is all.
